@@ -1,23 +1,17 @@
 {
-  "name": "server",
+  "name": "cloud-holdem-server",
   "version": "1.0.0",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "test": "jest --runInBand"
+    "test": "node --experimental-vm-modules node_modules/.bin/jest"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1047.0",
-    "ioredis": "^5.10.1",
-    "pokersolver": "^2.1.4",
-    "uuid": "^14.0.0",
-    "ws": "^8.20.1"
+    "ws": "^8.17.0",
+    "ioredis": "^5.3.2",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "jest": "^30.4.2"
+    "jest": "^29.7.0"
   }
 }

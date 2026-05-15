@@ -1,4 +1,5 @@
-module.exports = {
+export default {
+  transform: {},
   testEnvironment: 'node',
-  testMatch: ['**/__tests__/**/*.test.js'],
+  testMatch: ['**/tests/**/*.test.js'],
 };
