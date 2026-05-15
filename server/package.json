@@ -1,0 +1,23 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest --runInBand"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1047.0",
+    "ioredis": "^5.10.1",
+    "pokersolver": "^2.1.4",
+    "uuid": "^14.0.0",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2"
+  }
+}
