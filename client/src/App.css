@@ -1,35 +1,39 @@
-/* Cloud Hold'em global overrides */
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
-  background: #0d0d1a;
-  color: #e0e0e0;
-  font-family: system-ui, 'Segoe UI', sans-serif;
   margin: 0;
+  background: #080808;
+  color: #ccc;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1, h2, h3 { margin: 0; color: #fff; font-weight: 700; }
 
 input {
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #444;
-  background: #1a1a2e;
-  color: #e0e0e0;
-  font-size: 15px;
+  padding: 9px 12px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
 }
+input:focus { border-color: #555; }
+input::placeholder { color: #444; }
 
 button {
-  padding: 6px 14px;
-  border-radius: 4px;
-  border: none;
-  background: #4a4aff;
-  color: #fff;
+  padding: 9px 18px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 15px;
+  transition: background 0.15s, border-color 0.15s;
+  letter-spacing: 0.2px;
 }
-
-button:hover {
-  background: #6060ff;
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
+button:hover:not(:disabled) { background: #1a1a1a; border-color: #555; color: #fff; }
+button:disabled { opacity: 0.35; cursor: default; }

@@ -26,14 +26,16 @@ function addPlayer(game, nickname) {
     ...game,
     players: [
       ...game.players,
-      { nickname, chips: STARTING_CHIPS, hand: [], status: 'active', betThisRound: 0 },
+      { nickname, chips: STARTING_CHIPS, hand: [], status: 'active', betThisRound: 0, actedThisRound: false },
     ],
   };
 }
 
 function startGame(game) {
   let deck = shuffle(createDeck());
-  let players = game.players.map(p => ({ ...p, hand: [], betThisRound: 0, status: 'active' }));
+  let players = game.players.map(p => ({
+    ...p, hand: [], betThisRound: 0, status: 'active', actedThisRound: false,
+  }));
 
   for (let i = 0; i < 2; i++) {
     for (let j = 0; j < players.length; j++) {
@@ -47,6 +49,9 @@ function startGame(game) {
   const bbIdx = (game.dealerIndex + 2) % players.length;
   players[sbIdx] = { ...players[sbIdx], chips: players[sbIdx].chips - SMALL_BLIND, betThisRound: SMALL_BLIND };
   players[bbIdx] = { ...players[bbIdx], chips: players[bbIdx].chips - BIG_BLIND, betThisRound: BIG_BLIND };
+
+  // BB is considered to have acted (they posted), but can raise if action comes back to them
+  // SB has not fully acted yet
 
   const firstActIdx = (game.dealerIndex + 3) % players.length;
 
@@ -77,9 +82,10 @@ function nextTurnIndex(game, currentIdx) {
   return next;
 }
 
+// 베팅 라운드 종료: 모든 active 플레이어가 행동했고 베팅금액이 동일해야 함
 function isBettingRoundOver(game) {
   const active = game.players.filter(p => p.status === 'active');
-  return active.every(p => p.betThisRound === game.currentBet);
+  return active.every(p => p.betThisRound === game.currentBet && p.actedThisRound);
 }
 
 function advancePhase(game) {
@@ -89,7 +95,7 @@ function advancePhase(game) {
 
   let deck = [...game.deck];
   let communityCards = [...game.communityCards];
-  let players = game.players.map(p => ({ ...p, betThisRound: 0 }));
+  let players = game.players.map(p => ({ ...p, betThisRound: 0, actedThisRound: false }));
 
   if (nextPhase === 'flop') {
     for (let i = 0; i < 3; i++) {
@@ -160,13 +166,16 @@ function applyAction(game, nickname, action, amount) {
 
   if (action === 'fold') {
     players[idx].status = 'folded';
+    players[idx].actedThisRound = true;
   } else if (action === 'check') {
     if (players[idx].betThisRound < currentBet) throw new Error('CANNOT_CHECK');
+    players[idx].actedThisRound = true;
   } else if (action === 'call') {
     const toCall = currentBet - players[idx].betThisRound;
     const actual = Math.min(toCall, players[idx].chips);
     players[idx].chips -= actual;
     players[idx].betThisRound += actual;
+    players[idx].actedThisRound = true;
     pot += actual;
   } else if (action === 'raise') {
     const toCall = currentBet - players[idx].betThisRound;
@@ -174,8 +183,13 @@ function applyAction(game, nickname, action, amount) {
     if (total > players[idx].chips) throw new Error('NOT_ENOUGH_CHIPS');
     players[idx].chips -= total;
     players[idx].betThisRound += total;
+    players[idx].actedThisRound = true;
     pot += total;
     currentBet = players[idx].betThisRound;
+    // 레이즈 시 다른 active 플레이어들은 다시 행동해야 함
+    players = players.map((p, i) =>
+      i !== idx && p.status === 'active' ? { ...p, actedThisRound: false } : p
+    );
   }
 
   const remaining = players.filter(p => p.status === 'active' || p.status === 'all-in');
