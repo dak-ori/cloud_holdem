@@ -2,6 +2,7 @@ const { redis, createSubscriber } = require('./client');
 
 const subscriber = createSubscriber();
 const listeners = new Map();
+const LOBBY_CHANNEL = 'lobby';
 
 subscriber.on('message', (channel, message) => {
   const callbacks = listeners.get(channel);
@@ -35,4 +36,29 @@ async function publishGameEvent(gameId, event) {
   await redis.publish(`game:${gameId}`, JSON.stringify(event));
 }
 
-module.exports = { subscribeGame, unsubscribeGame, publishGameEvent };
+async function subscribeLobby(callback) {
+  if (!listeners.has(LOBBY_CHANNEL)) {
+    listeners.set(LOBBY_CHANNEL, new Set());
+    await subscriber.subscribe(LOBBY_CHANNEL);
+  }
+  listeners.get(LOBBY_CHANNEL).add(callback);
+}
+
+async function unsubscribeLobby(callback) {
+  const callbacks = listeners.get(LOBBY_CHANNEL);
+  if (!callbacks) return;
+  callbacks.delete(callback);
+  if (callbacks.size === 0) {
+    listeners.delete(LOBBY_CHANNEL);
+    await subscriber.unsubscribe(LOBBY_CHANNEL);
+  }
+}
+
+async function publishLobbyUpdate() {
+  await redis.publish(LOBBY_CHANNEL, JSON.stringify({ type: 'ROOMS_UPDATED' }));
+}
+
+module.exports = {
+  subscribeGame, unsubscribeGame, publishGameEvent,
+  subscribeLobby, unsubscribeLobby, publishLobbyUpdate,
+};

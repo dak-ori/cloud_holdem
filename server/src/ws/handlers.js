@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { createGame, addPlayer, startGame, applyAction } = require('../game/game-engine');
 const { saveGame, loadGame, deleteGame, withGameLock } = require('../redis/game-store');
 const { createRoom, getAllRooms, joinRoom, deleteRoom } = require('../redis/room-store');
-const { subscribeGame, unsubscribeGame, publishGameEvent } = require('../redis/pubsub');
+const { subscribeGame, unsubscribeGame, publishGameEvent, subscribeLobby, unsubscribeLobby, publishLobbyUpdate } = require('../redis/pubsub');
 const { sendTo } = require('./server');
 
 const RECONNECT_TIMEOUT_MS = 20 * 1000;
@@ -12,6 +12,8 @@ const disconnectTimers = new Map();
 const localGamePlayers = new Map();
 // gameId → callback : unsubscribe 시 사용
 const gameCallbacks = new Map();
+// nickname → callback : 로비 구독 중인 세션
+const lobbyCallbacks = new Map();
 
 function personalizeState(state, nickname) {
   return {
@@ -80,12 +82,25 @@ async function handleMessage(ws, msg, sessions) {
         clearTimeout(disconnectTimers.get(msg.nickname));
         disconnectTimers.delete(msg.nickname);
       }
+      const lobbyCallback = async () => {
+        const updatedRooms = await getAllRooms();
+        ws.send(JSON.stringify({ type: 'LOBBY_STATE', rooms: updatedRooms }));
+      };
+      if (lobbyCallbacks.has(msg.nickname)) {
+        await unsubscribeLobby(lobbyCallbacks.get(msg.nickname));
+      }
+      lobbyCallbacks.set(msg.nickname, lobbyCallback);
+      await subscribeLobby(lobbyCallback);
       const rooms = await getAllRooms();
       ws.send(JSON.stringify({ type: 'LOBBY_STATE', rooms }));
       break;
     }
 
     case 'CREATE_ROOM': {
+      if (lobbyCallbacks.has(ws.nickname)) {
+        await unsubscribeLobby(lobbyCallbacks.get(ws.nickname));
+        lobbyCallbacks.delete(ws.nickname);
+      }
       const roomId = uuidv4().slice(0, 8);
       await createRoom(roomId, msg.roomName, ws.nickname);
       let game = createGame(roomId);
@@ -95,10 +110,15 @@ async function handleMessage(ws, msg, sessions) {
       await registerLocalPlayer(roomId, ws.nickname);
       ws.send(JSON.stringify({ type: 'JOINED_ROOM', gameId: roomId }));
       ws.send(JSON.stringify({ type: 'GAME_STATE', state: game }));
+      await publishLobbyUpdate();
       break;
     }
 
     case 'JOIN_ROOM': {
+      if (lobbyCallbacks.has(ws.nickname)) {
+        await unsubscribeLobby(lobbyCallbacks.get(ws.nickname));
+        lobbyCallbacks.delete(ws.nickname);
+      }
       await joinRoom(msg.roomId, ws.nickname);
       ws.gameId = msg.roomId;
       await registerLocalPlayer(msg.roomId, ws.nickname);
@@ -115,6 +135,7 @@ async function handleMessage(ws, msg, sessions) {
         await saveGame(game);
         ws.send(JSON.stringify({ type: 'JOINED_ROOM', gameId: msg.roomId }));
         await publishGameEvent(msg.roomId, { type: 'STATE_UPDATED' });
+        await publishLobbyUpdate();
       });
       break;
     }
@@ -156,6 +177,10 @@ async function handleMessage(ws, msg, sessions) {
 }
 
 function handleDisconnect(nickname, gameId) {
+  if (lobbyCallbacks.has(nickname)) {
+    unsubscribeLobby(lobbyCallbacks.get(nickname)).catch(() => {});
+    lobbyCallbacks.delete(nickname);
+  }
   if (!gameId) return;
   unregisterLocalPlayer(gameId, nickname);
   const timer = setTimeout(async () => {
