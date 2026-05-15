@@ -1,4 +1,4 @@
-import { initHand, processAction } from '../../src/game/game-engine.js';
+import { initHand, processAction, advancePhase } from '../../src/game/game-engine.js';
 
 const makePlayers = (count) =>
   Array.from({ length: count }, (_, i) => ({
@@ -28,4 +28,33 @@ test('initHand: dealer_index 순환', () => {
   const players = makePlayers(4);
   const state1 = initHand('g1', players, 3);
   expect(state1.dealer_index).toBe(3);
+});
+
+test('processAction fold: 플레이어 상태 folded', () => {
+  const state = initHand('g1', makePlayers(4), 0);
+  const firstPlayer = state.current_turn;
+  const next = processAction(state, firstPlayer, 'fold');
+  const p = next.players.find(p => p.player_id === firstPlayer);
+  expect(p.status).toBe('folded');
+});
+
+test('processAction: 자기 턴이 아닌 플레이어가 액션하면 에러', () => {
+  const state = initHand('g1', makePlayers(4), 0);
+  const notMyTurn = state.players.find(p => p.player_id !== state.current_turn).player_id;
+  expect(() => processAction(state, notMyTurn, 'fold')).toThrow('not your turn');
+});
+
+test('processAction auto_fold: consecutive_auto_folds 증가', () => {
+  const state = initHand('g1', makePlayers(4), 0);
+  const firstPlayer = state.current_turn;
+  const next = processAction(state, firstPlayer, 'auto_fold');
+  const p = next.players.find(p => p.player_id === firstPlayer);
+  expect(p.consecutive_auto_folds).toBe(1);
+});
+
+test('advancePhase preflop→flop: 커뮤니티 카드 3장', () => {
+  const state = initHand('g1', makePlayers(4), 0);
+  const flopped = advancePhase({ ...state, phase: 'preflop' });
+  expect(flopped.phase).toBe('flop');
+  expect(flopped.community_cards).toHaveLength(3);
 });
