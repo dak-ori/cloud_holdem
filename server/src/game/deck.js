@@ -1,11 +1,11 @@
 const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
-const SUITS = ['s','h','d','c'];
+const SUITS = ['c','d','h','s'];
 
-function createDeck() {
-  return RANKS.flatMap(rank => SUITS.map(suit => `${rank}${suit}`));
+export function createDeck() {
+  return RANKS.flatMap(r => SUITS.map(s => `${r}${s}`));
 }
 
-function shuffle(deck) {
+export function shuffle(deck) {
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -13,8 +13,6 @@ function shuffle(deck) {
   return deck;
 }
 
-function dealCard(deck) {
-  return { card: deck[0], remaining: deck.slice(1) };
+export function dealCards(deck, n) {
+  return { cards: deck.slice(0, n), remaining: deck.slice(n) };
 }
-
-module.exports = { createDeck, shuffle, dealCard };
