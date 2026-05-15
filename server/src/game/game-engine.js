@@ -1,217 +1,190 @@
-const { createDeck, shuffle, dealCard } = require('./deck');
-const { Hand } = require('pokersolver');
+import { createDeck, shuffle, dealCards } from './deck.js';
+import { getBlinds } from './blinds.js';
+import { evaluateHand, compareHands } from './hand-evaluator.js';
+import { splitPot } from './pot.js';
 
-const SMALL_BLIND = 10;
-const BIG_BLIND = 20;
-const STARTING_CHIPS = 1000;
+export function initHand(gameId, players, dealerIndex) {
+  const activePlayers = players.filter(p => p.status === 'active');
+  const { sb, bb } = getBlinds(activePlayers.length);
 
-function createGame(gameId) {
-  return {
-    gameId,
-    phase: 'waiting',
-    players: [],
-    communityCards: [],
-    deck: [],
-    pot: 0,
-    currentBet: 0,
-    currentTurnIndex: 0,
-    dealerIndex: 0,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function addPlayer(game, nickname) {
-  if (game.players.length >= 4) throw new Error('ROOM_FULL');
-  return {
-    ...game,
-    players: [
-      ...game.players,
-      { nickname, chips: STARTING_CHIPS, hand: [], status: 'active', betThisRound: 0, actedThisRound: false },
-    ],
-  };
-}
-
-function startGame(game) {
   let deck = shuffle(createDeck());
-  let players = game.players.map(p => ({
-    ...p, hand: [], betThisRound: 0, status: 'active', actedThisRound: false,
-  }));
+  const dealtPlayers = activePlayers.map(p => {
+    const { cards, remaining } = dealCards(deck, 2);
+    deck = remaining;
+    return { ...p, hand: cards, current_bet: 0 };
+  });
 
-  for (let i = 0; i < 2; i++) {
-    for (let j = 0; j < players.length; j++) {
-      const { card, remaining } = dealCard(deck);
-      players[j] = { ...players[j], hand: [...players[j].hand, card] };
-      deck = remaining;
-    }
-  }
+  const sbIdx = (dealerIndex + 1) % dealtPlayers.length;
+  const bbIdx = (dealerIndex + 2) % dealtPlayers.length;
 
-  const sbIdx = (game.dealerIndex + 1) % players.length;
-  const bbIdx = (game.dealerIndex + 2) % players.length;
-  players[sbIdx] = { ...players[sbIdx], chips: players[sbIdx].chips - SMALL_BLIND, betThisRound: SMALL_BLIND };
-  players[bbIdx] = { ...players[bbIdx], chips: players[bbIdx].chips - BIG_BLIND, betThisRound: BIG_BLIND };
+  dealtPlayers[sbIdx].chips -= sb;
+  dealtPlayers[sbIdx].current_bet = sb;
+  dealtPlayers[bbIdx].chips -= bb;
+  dealtPlayers[bbIdx].current_bet = bb;
 
-  // BB is considered to have acted (they posted), but can raise if action comes back to them
-  // SB has not fully acted yet
-
-  const firstActIdx = (game.dealerIndex + 3) % players.length;
+  const pot = sb + bb;
+  const firstToAct = (bbIdx + 1) % dealtPlayers.length;
 
   return {
-    ...game,
+    game_id: gameId,
     phase: 'preflop',
-    players,
+    players: dealtPlayers,
+    community_cards: [],
     deck,
-    communityCards: [],
-    pot: SMALL_BLIND + BIG_BLIND,
-    currentBet: BIG_BLIND,
-    currentTurnIndex: firstActIdx,
-    updatedAt: new Date().toISOString(),
+    pot,
+    current_turn: dealtPlayers[firstToAct].player_id,
+    dealer_index: dealerIndex,
+    small_blind: sb,
+    big_blind: bb,
+    current_bet: bb,
+    updated_at: new Date().toISOString(),
   };
 }
 
-function getActivePlayers(game) {
-  return game.players.filter(p => p.status === 'active' || p.status === 'all-in');
-}
-
-function nextTurnIndex(game, currentIdx) {
-  let next = (currentIdx + 1) % game.players.length;
-  let attempts = 0;
-  while (game.players[next].status === 'folded' && attempts < game.players.length) {
-    next = (next + 1) % game.players.length;
-    attempts++;
+export function processAction(state, playerId, action, amount = 0) {
+  if (state.current_turn !== playerId) {
+    throw new Error('not your turn');
   }
-  return next;
-}
+  const players = state.players.map(p => ({ ...p }));
+  const playerIdx = players.findIndex(p => p.player_id === playerId);
+  const player = players[playerIdx];
+  let { pot, current_bet } = state;
 
-// 베팅 라운드 종료: 모든 active 플레이어가 행동했고 베팅금액이 동일해야 함
-function isBettingRoundOver(game) {
-  const active = game.players.filter(p => p.status === 'active');
-  return active.every(p => p.betThisRound === game.currentBet && p.actedThisRound);
-}
-
-function advancePhase(game) {
-  const phaseOrder = ['preflop', 'flop', 'turn', 'river', 'showdown'];
-  const currentIdx = phaseOrder.indexOf(game.phase);
-  const nextPhase = phaseOrder[currentIdx + 1];
-
-  let deck = [...game.deck];
-  let communityCards = [...game.communityCards];
-  let players = game.players.map(p => ({ ...p, betThisRound: 0, actedThisRound: false }));
-
-  if (nextPhase === 'flop') {
-    for (let i = 0; i < 3; i++) {
-      const { card, remaining } = dealCard(deck);
-      communityCards.push(card);
-      deck = remaining;
+  switch (action) {
+    case 'fold':
+      player.status = 'folded';
+      player.consecutive_auto_folds = 0;
+      break;
+    case 'auto_fold':
+      player.status = 'folded';
+      player.consecutive_auto_folds += 1;
+      break;
+    case 'check':
+      if (current_bet > player.current_bet) throw new Error('cannot check, must call or fold');
+      player.consecutive_auto_folds = 0;
+      break;
+    case 'call': {
+      const toCall = Math.min(current_bet - player.current_bet, player.chips);
+      player.chips -= toCall;
+      player.current_bet += toCall;
+      pot += toCall;
+      player.consecutive_auto_folds = 0;
+      break;
     }
-  } else if (nextPhase === 'turn' || nextPhase === 'river') {
-    const { card, remaining } = dealCard(deck);
-    communityCards.push(card);
+    case 'raise': {
+      if (amount <= current_bet) throw new Error('raise must exceed current bet');
+      const toAdd = Math.min(amount - player.current_bet, player.chips);
+      player.chips -= toAdd;
+      player.current_bet += toAdd;
+      pot += toAdd;
+      current_bet = player.current_bet;
+      player.consecutive_auto_folds = 0;
+      break;
+    }
+    case 'allin': {
+      const allInAmount = player.chips;
+      player.current_bet += allInAmount;
+      pot += allInAmount;
+      player.chips = 0;
+      player.status = 'allin';
+      if (player.current_bet > current_bet) current_bet = player.current_bet;
+      player.consecutive_auto_folds = 0;
+      break;
+    }
+    default:
+      throw new Error(`unknown action: ${action}`);
+  }
+
+  const nextTurn = getNextTurn(players, playerIdx);
+  const roundDone = nextTurn === null;
+
+  return {
+    ...state,
+    players,
+    pot,
+    current_bet,
+    current_turn: roundDone ? null : players[nextTurn].player_id,
+    updated_at: new Date().toISOString(),
+    _round_done: roundDone,
+  };
+}
+
+function getNextTurn(players, currentIdx) {
+  const activeCount = players.filter(p => p.status === 'active').length;
+  if (activeCount <= 1) return null;
+  for (let i = 1; i <= players.length; i++) {
+    const idx = (currentIdx + i) % players.length;
+    if (players[idx].status === 'active') return idx;
+  }
+  return null;
+}
+
+export function advancePhase(state) {
+  const phases = ['preflop', 'flop', 'turn', 'river', 'showdown'];
+  const next = phases[phases.indexOf(state.phase) + 1];
+  let { deck, community_cards } = state;
+
+  if (next === 'flop') {
+    const { cards, remaining } = dealCards(deck, 3);
+    community_cards = cards;
+    deck = remaining;
+  } else if (next === 'turn' || next === 'river') {
+    const { cards, remaining } = dealCards(deck, 1);
+    community_cards = [...community_cards, ...cards];
     deck = remaining;
   }
 
-  if (nextPhase === 'showdown') {
-    return resolveShowdown({ ...game, players, communityCards, deck, phase: 'showdown' });
-  }
-
-  const firstActIdx = (game.dealerIndex + 1) % players.length;
-  let offset = 0;
-  while (players[(firstActIdx + offset) % players.length].status !== 'active' && offset < players.length) {
-    offset++;
-  }
+  const activePlayers = state.players.map(p =>
+    p.status === 'active' ? { ...p, current_bet: 0 } : p
+  );
+  const sbIdx = (state.dealer_index + 1) % activePlayers.length;
+  const firstActive = next !== 'showdown'
+    ? findNextActive(activePlayers, sbIdx - 1)
+    : null;
 
   return {
-    ...game,
-    phase: nextPhase,
-    players,
-    communityCards,
+    ...state,
+    phase: next,
+    community_cards,
     deck,
-    currentBet: 0,
-    currentTurnIndex: (firstActIdx + offset) % players.length,
-    updatedAt: new Date().toISOString(),
+    players: activePlayers,
+    current_bet: 0,
+    current_turn: firstActive !== null ? activePlayers[firstActive].player_id : null,
+    updated_at: new Date().toISOString(),
   };
 }
 
-function resolveShowdown(game) {
-  const activePlayers = getActivePlayers(game);
-  const hands = activePlayers.map(p => ({
-    nickname: p.nickname,
-    hand: Hand.solve([...p.hand, ...game.communityCards]),
-  }));
-  const winnerHands = Hand.winners(hands.map(h => h.hand));
-  const winners = hands.filter(h => winnerHands.includes(h.hand)).map(h => h.nickname);
+function findNextActive(players, fromIdx) {
+  for (let i = 1; i <= players.length; i++) {
+    const idx = (fromIdx + i) % players.length;
+    if (players[idx].status === 'active') return idx;
+  }
+  return null;
+}
 
-  const split = Math.floor(game.pot / winners.length);
-  const players = game.players.map(p => ({
+export function resolveShowdown(state) {
+  const contenders = state.players.filter(
+    p => p.status === 'active' || p.status === 'allin'
+  );
+  if (contenders.length === 0) return state;
+
+  const evaluated = contenders.map(p => ({
     ...p,
-    chips: winners.includes(p.nickname) ? p.chips + split : p.chips,
+    eval: evaluateHand(p.hand, state.community_cards),
   }));
+  evaluated.sort((a, b) => compareHands(a.eval, b.eval));
 
-  return {
-    ...game,
-    phase: 'finished',
-    players,
-    winners,
-    updatedAt: new Date().toISOString(),
-  };
+  const bestRank = evaluated[0].eval.rank;
+  const winners = evaluated
+    .filter(p => p.eval.rank === bestRank)
+    .map(p => p.player_id);
+
+  const payouts = splitPot(state.pot, winners, 0);
+
+  const players = state.players.map(p => {
+    const payout = payouts.find(pay => pay.playerId === p.player_id);
+    return payout ? { ...p, chips: p.chips + payout.amount } : p;
+  });
+
+  return { ...state, players, pot: 0, phase: 'showdown', updated_at: new Date().toISOString() };
 }
-
-function applyAction(game, nickname, action, amount) {
-  if (game.players[game.currentTurnIndex].nickname !== nickname) {
-    throw new Error('NOT_YOUR_TURN');
-  }
-
-  let players = game.players.map(p => ({ ...p }));
-  const idx = game.currentTurnIndex;
-  let { pot, currentBet } = game;
-
-  if (action === 'fold') {
-    players[idx].status = 'folded';
-    players[idx].actedThisRound = true;
-  } else if (action === 'check') {
-    if (players[idx].betThisRound < currentBet) throw new Error('CANNOT_CHECK');
-    players[idx].actedThisRound = true;
-  } else if (action === 'call') {
-    const toCall = currentBet - players[idx].betThisRound;
-    const actual = Math.min(toCall, players[idx].chips);
-    players[idx].chips -= actual;
-    players[idx].betThisRound += actual;
-    players[idx].actedThisRound = true;
-    pot += actual;
-  } else if (action === 'raise') {
-    const toCall = currentBet - players[idx].betThisRound;
-    const total = toCall + amount;
-    if (total > players[idx].chips) throw new Error('NOT_ENOUGH_CHIPS');
-    players[idx].chips -= total;
-    players[idx].betThisRound += total;
-    players[idx].actedThisRound = true;
-    pot += total;
-    currentBet = players[idx].betThisRound;
-    // 레이즈 시 다른 active 플레이어들은 다시 행동해야 함
-    players = players.map((p, i) =>
-      i !== idx && p.status === 'active' ? { ...p, actedThisRound: false } : p
-    );
-  }
-
-  const remaining = players.filter(p => p.status === 'active' || p.status === 'all-in');
-  if (remaining.length === 1) {
-    const winner = remaining[0].nickname;
-    players = players.map(p => ({
-      ...p,
-      chips: p.nickname === winner ? p.chips + pot : p.chips,
-    }));
-    return {
-      ...game, players, pot: 0, currentBet, phase: 'finished',
-      winners: [winner], updatedAt: new Date().toISOString(),
-    };
-  }
-
-  let updated = { ...game, players, pot, currentBet, updatedAt: new Date().toISOString() };
-
-  if (isBettingRoundOver(updated)) {
-    return advancePhase(updated);
-  }
-
-  return { ...updated, currentTurnIndex: nextTurnIndex(updated, idx) };
-}
-
-module.exports = { createGame, addPlayer, startGame, applyAction, getActivePlayers };
