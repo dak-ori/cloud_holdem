@@ -3,7 +3,7 @@ const { createGame, addPlayer, startGame, applyAction } = require('../game/game-
 const { saveGame, loadGame, deleteGame, withGameLock } = require('../redis/game-store');
 const { createRoom, getAllRooms, joinRoom, deleteRoom } = require('../redis/room-store');
 const { subscribeGame, unsubscribeGame, publishGameEvent, subscribeLobby, unsubscribeLobby, publishLobbyUpdate } = require('../redis/pubsub');
-const { sendTo } = require('./server');
+const { sendTo } = require('./sessions');
 
 const RECONNECT_TIMEOUT_MS = 20 * 1000;
 const disconnectTimers = new Map();

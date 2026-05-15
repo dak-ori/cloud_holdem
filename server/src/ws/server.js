@@ -1,7 +1,6 @@
 const { WebSocketServer } = require('ws');
 const { handleMessage, handleDisconnect } = require('./handlers');
-
-const sessions = new Map();
+const { sessions, sendTo } = require('./sessions');
 
 function createWsServer(httpServer) {
   const wss = new WebSocketServer({ server: httpServer });
@@ -28,13 +27,6 @@ function createWsServer(httpServer) {
   });
 
   return wss;
-}
-
-function sendTo(nickname, message) {
-  const ws = sessions.get(nickname);
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify(message));
-  }
 }
 
 module.exports = { createWsServer, sessions, sendTo };
