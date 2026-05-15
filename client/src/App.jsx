@@ -1,122 +1,102 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { useWebSocket } from './hooks/useWebSocket'
+import Lobby from './components/Lobby'
+import GameTable from './components/GameTable'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [nickname, setNickname] = useState(() => sessionStorage.getItem('nickname') || '')
+  const [input, setInput] = useState('')
+  const [rooms, setRooms] = useState([])
+  const [gameState, setGameState] = useState(null)
+  const connectedRef = useRef(false)
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  const handleMessage = useCallback((msg) => {
+    switch (msg.type) {
+      case 'LOBBY_STATE':
+        setRooms(msg.rooms)
+        break
+      case 'GAME_STATE':
+        setGameState(msg.state)
+        if (msg.state?.gameId) sessionStorage.setItem('gameId', msg.state.gameId)
+        break
+      case 'JOINED_ROOM':
+        sessionStorage.setItem('gameId', msg.gameId)
+        break
+      case 'ERROR':
+        if (msg.message === 'GAME_NOT_FOUND') {
+          sessionStorage.removeItem('gameId')
+          setGameState(null)
+        }
+        break
+    }
+  }, [])
 
-      <div className="ticks"></div>
+  const { send, connected } = useWebSocket(handleMessage)
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  useEffect(() => {
+    if (connected && !connectedRef.current && nickname) {
+      const savedGameId = sessionStorage.getItem('gameId')
+      if (savedGameId) {
+        send({ type: 'RECONNECT', nickname, gameId: savedGameId })
+      } else {
+        send({ type: 'JOIN_LOBBY', nickname })
+      }
+    }
+    connectedRef.current = connected
+  }, [connected, nickname, send])
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  const joinLobby = () => {
+    const n = input.trim()
+    if (!n) return
+    setNickname(n)
+    sessionStorage.setItem('nickname', n)
+    send({ type: 'JOIN_LOBBY', nickname: n })
+    setInput('')
+  }
+
+  const leaveGame = () => {
+    sessionStorage.removeItem('gameId')
+    setGameState(null)
+    send({ type: 'JOIN_LOBBY', nickname })
+    setRooms([])
+  }
+
+  if (!nickname) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 100 }}>
+        <h1>Cloud Hold'em</h1>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            placeholder="닉네임 입력"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && joinLobby()}
+            autoFocus
+          />
+          <button onClick={joinLobby} disabled={!input.trim()}>입장</button>
+        </div>
+        {!connected && <p style={{ color: '#888', marginTop: 16 }}>서버 연결 중...</p>}
+      </div>
+    )
+  }
+
+  const inGame = gameState && gameState.phase !== 'waiting'
+
+  if (inGame) {
+    return (
+      <>
+        <GameTable gameState={gameState} nickname={nickname} send={send} />
+        {gameState.phase === 'finished' && (
+          <div style={{ padding: '0 40px' }}>
+            <button onClick={leaveGame}>로비로 돌아가기</button>
+          </div>
+        )}
+      </>
+    )
+  }
+
+  return <Lobby rooms={rooms} nickname={nickname} send={send} gameState={gameState} />
 }
 
 export default App
