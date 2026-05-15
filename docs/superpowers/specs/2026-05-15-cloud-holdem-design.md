@@ -137,12 +137,20 @@ EC2 → Redis rooms에서 해당 방 제거
 - 게임 상태는 Redis에 있으므로 EC2가 죽어도 데이터 유실 없음
 - 해당 EC2에 붙어있던 플레이어들이 재접속 → ALB가 살아있는 EC2로 라우팅 → Redis에서 게임 상태 복원
 
-### ASG Scale-In
-- Scale-In 전 ALB connection draining 활성화 (기존 WebSocket 연결 자연 종료 대기)
-- 게임 상태는 Redis에 있으므로 EC2 종료 후에도 안전
+### ASG Scale-In (WebSocket 롱 커넥션 보호)
+ALB connection draining 기본값(300초)은 장시간 WebSocket 연결을 강제 종료할 수 있음. 두 가지 대응:
+
+1. **클라이언트 자동 재접속**: WebSocket 끊기면 exponential backoff로 자동 재연결. 상태는 Redis에 있으므로 어느 EC2에 붙어도 게임 이어서 진행 (플레이어 입장에서 짧은 재연결 후 복귀)
+2. **ASG Lifecycle Hook**: Scale-In 신호 오면 해당 EC2가 health check 503 반환 → ALB가 새 연결 차단 → 기존 연결 자연 종료 대기 → 완료 후 lifecycle hook 완료 신호 전송 (최대 48시간 종료 지연 가능)
+
+### Redis Race Condition (Read-Modify-Write)
+턴제 게임이지만 버튼 연타·타이머 마감 직전 동시 액션 시 GET→수정→SET 사이 데이터 덮어쓰기 위험 존재. 두 가지 레이어로 방어:
+
+1. **Redis Lua 스크립트**: 상태 조회 + 검증 + 업데이트를 단일 스크립트로 원자적 실행. Node.js 왕복 없이 Redis 내부에서 완결됨 → race condition 원천 차단
+2. **current_turn 검증**: Lua 스크립트 내에서 액션 주체가 `current_turn`인지 확인 후 처리 → 순서 외 액션은 즉시 거절
 
 ### 동시 방 생성 (race condition)
-- Redis 원자적 연산(SETNX, 트랜잭션)으로 처리 → S3 ETag 방식 대비 안정적
+- Redis SETNX로 원자적 방 생성 → 중복 생성 불가
 
 ---
 
