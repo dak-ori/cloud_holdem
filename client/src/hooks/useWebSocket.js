@@ -24,15 +24,25 @@ export function useWebSocket(onMessage) {
     };
 
     ws.onclose = () => {
+      // wsRef.current가 이미 교체됐으면 이 연결이 superseded된 것 — 재연결 안 함
+      if (wsRef.current !== ws) return;
       setConnected(false);
-      setTimeout(() => connect(), retryDelay.current);
       retryDelay.current = Math.min(retryDelay.current * 2, 16000);
+      setTimeout(() => {
+        if (wsRef.current === ws) connect();
+      }, retryDelay.current);
     };
   }, []);
 
   useEffect(() => {
     connect();
-    return () => wsRef.current?.close();
+    return () => {
+      const ws = wsRef.current;
+      if (ws) {
+        wsRef.current = null; // 마킹: 정상 해제, 재연결 불필요
+        ws.close();
+      }
+    };
   }, [connect]);
 
   const send = useCallback((msg) => {
