@@ -1,42 +1,25 @@
-const http = require('http');
-const { createWsServer, sessions } = require('./ws/server');
-const { redis } = require('./redis/client');
+import { WebSocketServer } from 'ws';
+import http from 'http';
+import { handleConnection } from './ws/handler.js';
+import { startTurnTimerPoller } from './timer/turn-timer.js';
 
 const PORT = process.env.PORT || 3001;
-let isShuttingDown = false;
 
-const httpServer = http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   if (req.url === '/health') {
-    res.writeHead(isShuttingDown ? 503 : 200);
-    res.end(isShuttingDown ? 'shutting down' : 'ok');
-    return;
+    res.writeHead(200);
+    res.end('OK');
+  } else {
+    res.writeHead(404);
+    res.end();
   }
-  res.writeHead(404);
-  res.end();
 });
 
-const wss = createWsServer(httpServer);
+const wss = new WebSocketServer({ server });
+wss.on('connection', handleConnection);
 
-httpServer.listen(PORT, () => {
-  console.log(`Game server running on port ${PORT}`);
+startTurnTimerPoller();
+
+server.listen(PORT, () => {
+  console.log(`Cloud Hold'em server running on port ${PORT}`);
 });
-
-async function gracefulShutdown() {
-  isShuttingDown = true;
-  console.log('Shutting down: stopping new connections');
-
-  const deadline = Date.now() + 5 * 60 * 1000;
-  while (sessions.size > 0 && Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 2000));
-  }
-
-  wss.close();
-  httpServer.close(async () => {
-    await redis.quit();
-    console.log('Shutdown complete');
-    process.exit(0);
-  });
-}
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
