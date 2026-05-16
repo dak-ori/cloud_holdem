@@ -2,6 +2,7 @@ import { getRedis } from './client.js';
 import Redis from 'ioredis';
 
 let subscriber;
+const handlers = new Map(); // gameId → handler function
 export function getSubscriber() {
   if (!subscriber) {
     subscriber = new Redis({
@@ -22,15 +23,32 @@ export async function publish(gameId, event) {
 
 export async function subscribe(gameId, callback) {
   const sub = getSubscriber();
-  await sub.subscribe(`game:${gameId}`);
-  sub.on('message', (channel, message) => {
+
+  // 이미 구독 중이면 기존 핸들러 제거
+  if (handlers.has(gameId)) {
+    sub.removeListener('message', handlers.get(gameId));
+  }
+
+  const handler = (channel, message) => {
     if (channel === `game:${gameId}`) {
-      callback(JSON.parse(message));
+      try {
+        callback(JSON.parse(message));
+      } catch (err) {
+        console.error(`[PubSub] Parse error for ${gameId}:`, err.message);
+      }
     }
-  });
+  };
+
+  handlers.set(gameId, handler);
+  sub.on('message', handler);
+  await sub.subscribe(`game:${gameId}`);
 }
 
 export async function unsubscribe(gameId) {
   const sub = getSubscriber();
+  if (handlers.has(gameId)) {
+    sub.removeListener('message', handlers.get(gameId));
+    handlers.delete(gameId);
+  }
   await sub.unsubscribe(`game:${gameId}`);
 }
