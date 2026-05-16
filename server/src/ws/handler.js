@@ -9,6 +9,9 @@ import { trackGame, untrackGame } from '../timer/turn-timer.js';
 // gameId → countdown timer handle
 const countdowns = new Map();
 
+// 이미 Redis 채널 구독된 gameId들
+const subscribedGames = new Set();
+
 export function handleConnection(ws) {
   let playerId = uuidv4();
   let currentGameId = null;
@@ -44,7 +47,10 @@ async function route(msg, ws, playerId, currentGameId, setGameId) {
       const room = await createRoom(playerId, msg.nickname);
       setGameId(room.game_id);
       register(room.game_id, playerId, ws);
-      await subscribe(room.game_id, (event) => broadcastToGame(room.game_id, event));
+      if (!subscribedGames.has(room.game_id)) {
+        await subscribe(room.game_id, (event) => broadcastToGame(room.game_id, event));
+        subscribedGames.add(room.game_id);
+      }
       ws.send(JSON.stringify({ type: 'room_created', room }));
       break;
     }
@@ -52,7 +58,10 @@ async function route(msg, ws, playerId, currentGameId, setGameId) {
       const room = await joinRoom(msg.game_id, playerId, msg.nickname);
       setGameId(msg.game_id);
       register(msg.game_id, playerId, ws);
-      await subscribe(msg.game_id, (event) => broadcastToGame(msg.game_id, event));
+      if (!subscribedGames.has(msg.game_id)) {
+        await subscribe(msg.game_id, (event) => broadcastToGame(msg.game_id, event));
+        subscribedGames.add(msg.game_id);
+      }
       broadcastToGame(msg.game_id, { type: 'player_joined', room });
 
       if (room.players.length === 4) {
@@ -73,13 +82,15 @@ async function route(msg, ws, playerId, currentGameId, setGameId) {
         room.players = room.players.filter(p => p.player_id !== playerId);
         if (room.players.length === 0) {
           await removeRoom(currentGameId);
+          // 마지막 플레이어 → Redis 채널 구독 해제
+          await unsubscribe(currentGameId);
+          subscribedGames.delete(currentGameId);
         } else {
           await updateRoom(currentGameId, room);
           broadcastToGame(currentGameId, { type: 'player_left', room });
         }
       }
       unregister(currentGameId, playerId);
-      await unsubscribe(currentGameId);
       setGameId(null);
       break;
     }
@@ -120,6 +131,9 @@ async function startNextHand(gameId, state) {
     await publish(gameId, { type: 'game_over', winner: surviving[0] });
     await deleteGameState(gameId);
     untrackGame(gameId);
+    // 게임 종료 → 구독 해제
+    await unsubscribe(gameId);
+    subscribedGames.delete(gameId);
     return;
   }
 
