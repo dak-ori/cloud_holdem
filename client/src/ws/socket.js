@@ -1,0 +1,59 @@
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+const MAX_BACKOFF_MS = 30_000;
+
+let ws = null;
+let listeners = {};
+let backoffMs = 500;
+let intentionalClose = false;
+
+export function getSocket() {
+  return ws;
+}
+
+export function connect() {
+  intentionalClose = false;
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    backoffMs = 500;
+    emit('_connected');
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    emit(msg.type, msg);
+    emit('*', msg);
+  };
+
+  ws.onclose = () => {
+    if (!intentionalClose) {
+      setTimeout(connect, backoffMs);
+      backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
+    }
+  };
+
+  ws.onerror = (err) => {
+    console.error('[WS] Error:', err);
+  };
+}
+
+export function disconnect() {
+  intentionalClose = true;
+  ws?.close();
+}
+
+export function send(msg) {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
+}
+
+export function on(type, fn) {
+  if (!listeners[type]) listeners[type] = new Set();
+  listeners[type].add(fn);
+  return () => listeners[type].delete(fn);
+}
+
+function emit(type, data) {
+  listeners[type]?.forEach(fn => fn(data));
+}
