@@ -1,64 +1,36 @@
-const { redis, createSubscriber } = require('./client');
+import { getRedis } from './client.js';
+import Redis from 'ioredis';
 
-const subscriber = createSubscriber();
-const listeners = new Map();
-const LOBBY_CHANNEL = 'lobby';
-
-subscriber.on('message', (channel, message) => {
-  const callbacks = listeners.get(channel);
-  if (callbacks) {
-    const data = JSON.parse(message);
-    callbacks.forEach(cb => cb(data));
+let subscriber;
+export function getSubscriber() {
+  if (!subscriber) {
+    subscriber = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: Number(process.env.REDIS_PORT) || 6379,
+    });
+    subscriber.on('error', (err) => {
+      console.error('[Redis Subscriber] Connection error:', err.message);
+    });
   }
-});
-
-async function subscribeGame(gameId, callback) {
-  const channel = `game:${gameId}`;
-  if (!listeners.has(channel)) {
-    listeners.set(channel, new Set());
-    await subscriber.subscribe(channel);
-  }
-  listeners.get(channel).add(callback);
+  return subscriber;
 }
 
-async function unsubscribeGame(gameId, callback) {
-  const channel = `game:${gameId}`;
-  const callbacks = listeners.get(channel);
-  if (!callbacks) return;
-  callbacks.delete(callback);
-  if (callbacks.size === 0) {
-    listeners.delete(channel);
-    await subscriber.unsubscribe(channel);
-  }
-}
-
-async function publishGameEvent(gameId, event) {
+export async function publish(gameId, event) {
+  const redis = getRedis();
   await redis.publish(`game:${gameId}`, JSON.stringify(event));
 }
 
-async function subscribeLobby(callback) {
-  if (!listeners.has(LOBBY_CHANNEL)) {
-    listeners.set(LOBBY_CHANNEL, new Set());
-    await subscriber.subscribe(LOBBY_CHANNEL);
-  }
-  listeners.get(LOBBY_CHANNEL).add(callback);
+export async function subscribe(gameId, callback) {
+  const sub = getSubscriber();
+  await sub.subscribe(`game:${gameId}`);
+  sub.on('message', (channel, message) => {
+    if (channel === `game:${gameId}`) {
+      callback(JSON.parse(message));
+    }
+  });
 }
 
-async function unsubscribeLobby(callback) {
-  const callbacks = listeners.get(LOBBY_CHANNEL);
-  if (!callbacks) return;
-  callbacks.delete(callback);
-  if (callbacks.size === 0) {
-    listeners.delete(LOBBY_CHANNEL);
-    await subscriber.unsubscribe(LOBBY_CHANNEL);
-  }
+export async function unsubscribe(gameId) {
+  const sub = getSubscriber();
+  await sub.unsubscribe(`game:${gameId}`);
 }
-
-async function publishLobbyUpdate() {
-  await redis.publish(LOBBY_CHANNEL, JSON.stringify({ type: 'ROOMS_UPDATED' }));
-}
-
-module.exports = {
-  subscribeGame, unsubscribeGame, publishGameEvent,
-  subscribeLobby, unsubscribeLobby, publishLobbyUpdate,
-};
