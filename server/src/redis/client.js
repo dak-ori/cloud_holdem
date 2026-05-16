@@ -1,15 +1,13 @@
-const Redis = require('ioredis');
+import Redis from 'ioredis';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+let instance;
 
-function createClient() {
-  return new Redis(REDIS_URL, { lazyConnect: true });
+export function getRedis() {
+  if (!instance) {
+    instance = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: Number(process.env.REDIS_PORT) || 6379,
+    });
+  }
+  return instance;
 }
-
-const redis = createClient();
-
-function createSubscriber() {
-  return createClient();
-}
-
-module.exports = { redis, createSubscriber };
