@@ -17,7 +17,13 @@ return 'OK'
 export async function getGameState(gameId) {
   const redis = getRedis();
   const raw = await redis.get(`game:${gameId}`);
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error(`[GameState] Parse failed for game:${gameId}`, err.message);
+    throw new Error(`Invalid game state for ${gameId}`);
+  }
 }
 
 export async function setGameState(gameId, state) {
@@ -27,14 +33,19 @@ export async function setGameState(gameId, state) {
 
 export async function atomicUpdateGameState(gameId, expectedTurn, newState) {
   const redis = getRedis();
-  const result = await redis.eval(
-    UPDATE_SCRIPT,
-    1,
-    `game:${gameId}`,
-    expectedTurn,
-    JSON.stringify(newState)
-  );
-  return result;
+  try {
+    return await redis.eval(
+      UPDATE_SCRIPT,
+      1,
+      `game:${gameId}`,
+      expectedTurn,
+      JSON.stringify(newState)
+    );
+  } catch (err) {
+    if (err.message.includes('NOT_FOUND')) throw new Error('GAME_NOT_FOUND');
+    if (err.message.includes('NOT_YOUR_TURN')) throw new Error('NOT_YOUR_TURN');
+    throw err;
+  }
 }
 
 export async function deleteGameState(gameId) {
@@ -44,7 +55,7 @@ export async function deleteGameState(gameId) {
 
 export async function setTurnDeadline(gameId, deadlineUnixMs) {
   const redis = getRedis();
-  const ttlSec = Math.ceil((deadlineUnixMs - Date.now()) / 1000);
+  const ttlSec = Math.max(1, Math.ceil((deadlineUnixMs - Date.now()) / 1000));
   await redis.set(`game:${gameId}:turn_deadline`, String(deadlineUnixMs), 'EX', ttlSec);
 }
 

@@ -8,6 +8,9 @@ export function getRedis() {
       host: process.env.REDIS_HOST || 'localhost',
       port: Number(process.env.REDIS_PORT) || 6379,
     });
+    instance.on('error', (err) => {
+      console.error('[Redis] Connection error:', err.message);
+    });
   }
   return instance;
 }
