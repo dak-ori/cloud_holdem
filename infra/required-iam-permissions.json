@@ -90,6 +90,49 @@
         "autoscaling:TerminateInstanceInAutoScalingGroup"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "ElastiCacheFull",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateCacheCluster", "elasticache:DeleteCacheCluster",
+        "elasticache:DescribeCacheClusters", "elasticache:ModifyCacheCluster",
+        "elasticache:RebootCacheCluster",
+        "elasticache:CreateCacheSubnetGroup", "elasticache:DeleteCacheSubnetGroup",
+        "elasticache:DescribeCacheSubnetGroups", "elasticache:ModifyCacheSubnetGroup",
+        "elasticache:CreateReplicationGroup", "elasticache:DeleteReplicationGroup",
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:CreateCacheParameterGroup", "elasticache:DeleteCacheParameterGroup",
+        "elasticache:DescribeCacheParameterGroups",
+        "elasticache:AddTagsToResource", "elasticache:ListTagsForResource",
+        "elasticache:RemoveTagsFromResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ELBFull",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateLoadBalancer", "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:CreateTargetGroup", "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:RegisterTargets", "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:CreateListener", "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:DescribeListeners", "elasticloadbalancing:ModifyListener",
+        "elasticloadbalancing:CreateRule", "elasticloadbalancing:DeleteRule",
+        "elasticloadbalancing:DescribeRules", "elasticloadbalancing:ModifyRule",
+        "elasticloadbalancing:AddTags", "elasticloadbalancing:RemoveTags",
+        "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:SetSecurityGroups", "elasticloadbalancing:SetSubnets",
+        "elasticloadbalancing:SetIpAddressType",
+        "elasticloadbalancing:DescribeSSLPolicies",
+        "elasticloadbalancing:DescribeAccountLimits"
+      ],
+      "Resource": "*"
     }
   ]
 }
