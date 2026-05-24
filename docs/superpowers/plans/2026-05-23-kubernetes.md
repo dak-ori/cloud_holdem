@@ -1,5 +1,7 @@
 # Kubernetes EKS 전환 Implementation Plan
 
+> ⚠️ **DEPRECATED (2026-05-23):** ECS로 전환. `docs/superpowers/plans/2026-05-23-ecs.md` 참고.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** EC2 Auto Scaling Group을 EKS + AWS Load Balancer Controller로 완전 대체. Node.js WebSocket 서버를 컨테이너화하고 K8s로 운영.
