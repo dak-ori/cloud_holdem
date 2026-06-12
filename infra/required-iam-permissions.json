@@ -58,7 +58,8 @@
         "ec2:CreateLaunchTemplate", "ec2:DeleteLaunchTemplate",
         "ec2:CreateLaunchTemplateVersion",
         "ec2:RunInstances", "ec2:TerminateInstances",
-        "ec2:CreateTags"
+        "ec2:CreateTags",
+        "ec2:DescribeAccountAttributes"
       ],
       "Resource": "*"
     },
@@ -145,6 +146,29 @@
       "Effect": "Allow",
       "Action": ["ssm:GetParameters", "ssm:GetParameter"],
       "Resource": "*"
+    },
+    {
+      "Sid": "S3ForDeploy",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket", "s3:GetBucketLocation",
+        "s3:GetObject", "s3:PutObject", "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::holdem-client-026951011097",
+        "arn:aws:s3:::holdem-client-026951011097/*",
+        "arn:aws:s3:::holdem-history-026951011097",
+        "arn:aws:s3:::holdem-history-026951011097/*"
+      ]
+    },
+    {
+      "Sid": "AccessKeyForKjhUser",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateAccessKey", "iam:ListAccessKeys",
+        "iam:DeleteAccessKey", "iam:UpdateAccessKey"
+      ],
+      "Resource": "arn:aws:iam::026951011097:user/kjh"
     }
   ]
 }
