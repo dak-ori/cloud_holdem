@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-PROFILE=dsu-roleswitch
+PROFILE="${PROFILE:-dsu-roleswitch}"
 ACCOUNT_ID=026951011097
 HISTORY_BUCKET=holdem-history-026951011097
 
