@@ -24,16 +24,20 @@ export default function ActionPanel({ isMyTurn, currentBet, myBet, myChips, onAc
 
   return (
     <div style={styles.panel}>
-      <div style={{ ...styles.timer, color: timeLeft <= 5 ? '#f44' : '#0f0' }}>
-        ⏱ 남은 시간: {timeLeft}초
+      <div style={{
+        ...styles.timer,
+        color: timeLeft <= 5 ? '#fb7185' : '#22d3ee',
+        filter: `drop-shadow(0 0 10px ${timeLeft <= 5 ? 'rgba(251,113,133,.5)' : 'rgba(34,211,238,.4)'})`,
+      }}>
+        ⏱ {timeLeft}초
       </div>
       <div style={styles.actions}>
-        <button style={{ ...styles.btn, background: '#922' }} onClick={() => onAction('fold')}>폴드</button>
+        <button style={{ ...styles.btn, ...styles.btnFold }} onClick={() => onAction('fold')}>폴드</button>
         {canCheck
-          ? <button style={styles.btn} onClick={() => onAction('check')}>체크</button>
-          : <button style={styles.btn} onClick={() => onAction('call')}>콜 ({callAmount})</button>
+          ? <button style={{ ...styles.btn, ...styles.btnMain }} onClick={() => onAction('check')}>체크</button>
+          : <button style={{ ...styles.btn, ...styles.btnMain }} onClick={() => onAction('call')}>콜 ({callAmount})</button>
         }
-        <button style={{ ...styles.btn, background: '#a60' }} onClick={() => onAction('allin')}>올인</button>
+        <button style={{ ...styles.btn, ...styles.btnAllin }} onClick={() => onAction('allin')}>올인</button>
       </div>
       <div style={styles.raiseRow}>
         <input
@@ -45,7 +49,7 @@ export default function ActionPanel({ isMyTurn, currentBet, myBet, myChips, onAc
           step={bigBlind || 20}
           onChange={e => setRaiseAmount(Number(e.target.value))}
         />
-        <button style={{ ...styles.btn, flex: 1 }} onClick={() => onAction('raise', raiseAmount)}>
+        <button style={{ ...styles.btn, ...styles.btnRaise, flex: 1 }} onClick={() => onAction('raise', raiseAmount)}>
           레이즈
         </button>
       </div>
@@ -54,10 +58,41 @@ export default function ActionPanel({ isMyTurn, currentBet, myBet, myChips, onAc
 }
 
 const styles = {
-  panel: { background: '#111', borderRadius: 8, padding: 12, color: '#eee', fontFamily: 'monospace', marginTop: 12 },
-  timer: { textAlign: 'center', fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-  actions: { display: 'flex', gap: 6 },
-  raiseRow: { display: 'flex', gap: 6, marginTop: 8 },
-  btn: { flex: 1, padding: 10, background: '#2a4', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontFamily: 'monospace' },
-  raiseInput: { flex: 1, padding: 8, background: '#222', color: '#fff', border: '1px solid #444', borderRadius: 4, fontSize: 13 },
+  panel: {
+    background: 'rgba(17,17,32,.72)',
+    border: '1px solid rgba(124,58,237,.35)',
+    borderRadius: 16, backdropFilter: 'blur(12px)',
+    padding: 14, color: '#e7e9ff', marginTop: 12,
+  },
+  timer: {
+    textAlign: 'center', fontSize: 17, fontWeight: 'bold', marginBottom: 10,
+    fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
+  },
+  actions: { display: 'flex', gap: 8 },
+  raiseRow: { display: 'flex', gap: 8, marginTop: 10 },
+  btn: {
+    flex: 1, padding: 12, color: '#fff', border: 'none', borderRadius: 10,
+    fontSize: 14, fontWeight: 700, cursor: 'pointer',
+  },
+  btnFold: {
+    background: 'rgba(244,63,94,.15)', color: '#fb7185',
+    border: '1px solid rgba(244,63,94,.45)',
+  },
+  btnMain: {
+    background: 'rgba(34,211,238,.12)', color: '#22d3ee',
+    border: '1px solid rgba(34,211,238,.5)',
+    boxShadow: '0 0 14px rgba(34,211,238,.2)',
+  },
+  btnAllin: {
+    background: 'rgba(245,158,11,.14)', color: '#fbbf24',
+    border: '1px solid rgba(245,158,11,.5)',
+  },
+  btnRaise: {
+    background: 'linear-gradient(90deg, #7c3aed, #db2777)',
+    boxShadow: '0 0 18px rgba(124,58,237,.4)',
+  },
+  raiseInput: {
+    flex: 1, padding: 10, background: 'rgba(7,7,15,.8)',
+    color: '#e7e9ff', border: '1px solid rgba(124,58,237,.4)', borderRadius: 10, fontSize: 14,
+  },
 };

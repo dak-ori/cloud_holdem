@@ -11,19 +11,16 @@ export default function Game() {
   if (page === 'gameover') {
     return (
       <div style={styles.center}>
-        <h1>게임 종료</h1>
-        <p style={{ color: '#ffd700', fontSize: 20 }}>
-          🏆 우승자: {gameState?.winner?.nickname}
-        </p>
-        <p style={{ color: '#aaa' }}>
-          최종 칩: {gameState?.winner?.chips?.toLocaleString()}
-        </p>
-        <button
-          style={styles.btnRefresh}
-          onClick={() => window.location.reload()}
-        >
-          다시 시작
-        </button>
+        <div style={styles.overPanel}>
+          <h1 style={styles.overTitle}>GAME OVER</h1>
+          <p style={styles.winner}>🏆 우승자: {gameState?.winner?.nickname}</p>
+          <p style={{ color: '#8b8fb8' }}>
+            최종 칩: {gameState?.winner?.chips?.toLocaleString()}
+          </p>
+          <button style={styles.btnRefresh} onClick={() => window.location.reload()}>
+            다시 시작
+          </button>
+        </div>
       </div>
     );
   }
@@ -31,7 +28,7 @@ export default function Game() {
   if (!gameState) {
     return (
       <div style={styles.center}>
-        <p style={{ color: '#aaa' }}>게임 로딩 중...</p>
+        <p style={{ color: '#8b8fb8' }}>게임 로딩 중...</p>
       </div>
     );
   }
@@ -42,13 +39,11 @@ export default function Game() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <span style={{ color: '#00ff88', fontWeight: 'bold' }}>
-          {gameState.phase?.toUpperCase()}
-        </span>
-        <span style={{ color: '#aaa' }}>
+        <span style={styles.phase}>{gameState.phase?.toUpperCase()}</span>
+        <span style={{ color: '#8b8fb8' }}>
           SB {gameState.small_blind} / BB {gameState.big_blind}
         </span>
-        <span style={{ color: '#ffd700' }}>팟 {gameState.pot}</span>
+        <span style={styles.headerPot}>팟 {gameState.pot}</span>
       </div>
 
       <div style={styles.seats}>
@@ -80,25 +75,43 @@ export default function Game() {
 }
 
 const styles = {
-  container: {
-    maxWidth: 640, margin: '16px auto', padding: 16,
-    color: '#eee', fontFamily: 'monospace',
-  },
+  container: { maxWidth: 680, margin: '0 auto', padding: '24px 16px', position: 'relative' },
   center: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
-    marginTop: 100, color: '#eee', fontFamily: 'monospace',
+    paddingTop: 100, position: 'relative',
   },
   header: {
-    display: 'flex', justifyContent: 'space-between',
-    marginBottom: 12, fontSize: 13,
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '12px 18px', marginBottom: 14, fontSize: 14,
+    background: 'rgba(17,17,32,.72)', border: '1px solid rgba(124,58,237,.35)',
+    borderRadius: 14, backdropFilter: 'blur(12px)',
   },
+  phase: {
+    fontFamily: "'Orbitron', sans-serif", fontWeight: 900, letterSpacing: 2,
+    background: 'linear-gradient(90deg, #22d3ee, #a78bfa)',
+    WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+  },
+  headerPot: { color: '#22d3ee', fontFamily: "'Orbitron', sans-serif", fontSize: 13 },
   seats: {
     display: 'grid', gridTemplateColumns: '1fr 1fr',
-    gap: 8, marginBottom: 8,
+    gap: 10, marginBottom: 8,
   },
+  overPanel: {
+    background: 'rgba(17,17,32,.72)', border: '1px solid rgba(124,58,237,.35)',
+    borderRadius: 18, backdropFilter: 'blur(12px)', padding: '40px 60px', textAlign: 'center',
+  },
+  overTitle: {
+    fontFamily: "'Orbitron', sans-serif", fontSize: 38, letterSpacing: 3, marginBottom: 18,
+    background: 'linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6)',
+    WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+    filter: 'drop-shadow(0 0 18px rgba(167,139,250,.4))',
+  },
+  winner: { color: '#f5d061', fontSize: 22, marginBottom: 8 },
   btnRefresh: {
-    marginTop: 24, padding: '10px 32px', background: '#2a6',
-    color: '#fff', border: 'none', borderRadius: 4,
-    fontSize: 16, cursor: 'pointer', fontFamily: 'monospace',
+    marginTop: 26, padding: '13px 44px',
+    background: 'linear-gradient(90deg, #7c3aed, #db2777)',
+    color: '#fff', border: 'none', borderRadius: 12,
+    fontSize: 16, fontWeight: 700, cursor: 'pointer',
+    boxShadow: '0 0 24px rgba(124,58,237,.5)',
   },
 };
