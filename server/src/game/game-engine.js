@@ -11,7 +11,7 @@ export function initHand(gameId, players, dealerIndex) {
   const dealtPlayers = activePlayers.map(p => {
     const { cards, remaining } = dealCards(deck, 2);
     deck = remaining;
-    return { ...p, hand: cards, current_bet: 0 };
+    return { ...p, hand: cards, current_bet: 0, has_acted: false };
   });
 
   const sbIdx = (dealerIndex + 1) % dealtPlayers.length;
@@ -95,8 +95,16 @@ export function processAction(state, playerId, action, amount = 0) {
       throw new Error(`unknown action: ${action}`);
   }
 
-  const nextTurn = getNextTurn(players, playerIdx);
-  const roundDone = nextTurn === null;
+  player.has_acted = true;
+  // 레이즈(베팅 상승)는 이미 행동한 플레이어에게 응답 기회를 다시 줘야 한다
+  if (current_bet > state.current_bet) {
+    players.forEach(p => {
+      if (p.player_id !== playerId && p.status === 'active') p.has_acted = false;
+    });
+  }
+
+  const roundDone = isBettingRoundDone(players, current_bet);
+  const nextTurn = roundDone ? null : getNextTurn(players, playerIdx);
 
   return {
     ...state,
@@ -109,9 +117,13 @@ export function processAction(state, playerId, action, amount = 0) {
   };
 }
 
+function isBettingRoundDone(players, currentBet) {
+  const active = players.filter(p => p.status === 'active');
+  if (active.length <= 1) return true;
+  return active.every(p => p.has_acted && p.current_bet === currentBet);
+}
+
 function getNextTurn(players, currentIdx) {
-  const activeCount = players.filter(p => p.status === 'active').length;
-  if (activeCount <= 1) return null;
   for (let i = 1; i <= players.length; i++) {
     const idx = (currentIdx + i) % players.length;
     if (players[idx].status === 'active') return idx;
@@ -135,7 +147,7 @@ export function advancePhase(state) {
   }
 
   const activePlayers = state.players.map(p =>
-    p.status === 'active' ? { ...p, current_bet: 0 } : p
+    p.status === 'active' ? { ...p, current_bet: 0, has_acted: false } : p
   );
   const sbIdx = (state.dealer_index + 1) % activePlayers.length;
   const firstActive = next !== 'showdown'
@@ -174,9 +186,11 @@ export function resolveShowdown(state) {
   }));
   evaluated.sort((a, b) => compareHands(a.eval, b.eval));
 
-  const bestRank = evaluated[0].eval.rank;
+  // rank(족보 카테고리)만 비교하면 A 페어와 K 페어가 무승부가 된다 —
+  // 키커까지 포함한 compareHands로 완전 동점일 때만 팟을 나눈다
+  const best = evaluated[0].eval;
   const winners = evaluated
-    .filter(p => p.eval.rank === bestRank)
+    .filter(p => compareHands(p.eval, best) === 0)
     .map(p => p.player_id);
 
   const payouts = splitPot(state.pot, winners, 0);

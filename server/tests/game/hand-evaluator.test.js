@@ -51,7 +51,37 @@ test('하이카드', () => {
 });
 
 test('compareHands: 낮은 rank가 이김', () => {
-  expect(compareHands({ rank: 1 }, { rank: 2 })).toBe(-1);
-  expect(compareHands({ rank: 5 }, { rank: 3 })).toBe(1);
-  expect(compareHands({ rank: 4 }, { rank: 4 })).toBe(0);
+  expect(compareHands({ rank: 1, tiebreak: [] }, { rank: 2, tiebreak: [] })).toBe(-1);
+  expect(compareHands({ rank: 5, tiebreak: [] }, { rank: 3, tiebreak: [] })).toBe(1);
+  expect(compareHands({ rank: 4, tiebreak: [1, 2] }, { rank: 4, tiebreak: [1, 2] })).toBe(0);
+});
+
+test('compareHands: 페어 랭크가 키커보다 우선한다 (3 페어 > 2 페어 + A 키커)', () => {
+  const board = ['2c', 'Qd', '9s', '7h', '4d'];
+  const twosWithAce = evaluateHand(['Ah', '2d'], board); // 2 페어 + A 키커
+  const threes = evaluateHand(['3h', '3d'], board);      // 3 페어
+  expect(compareHands(threes, twosWithAce)).toBe(-1);
+});
+
+test('7장 중 최선 5장: 같은 족보라면 키커가 가장 좋은 조합을 선택한다', () => {
+  // 보드 페어(9,9) 공유 — 홀카드 A 키커가 K 키커를 이겨야 한다
+  const board = ['9c', '9d', '5s', '3h', '2c'];
+  const aceKicker = evaluateHand(['Ah', 'Qd'], board);
+  const kingKicker = evaluateHand(['Kh', 'Qc'], board);
+  expect(compareHands(aceKicker, kingKicker)).toBe(-1);
+});
+
+test('휠(A-2-3-4-5)은 5-high 스트레이트: 6-high 스트레이트에게 진다', () => {
+  const board = ['3c', '4d', '5s', 'Kh', 'Qc'];
+  const wheel = evaluateHand(['Ah', '2d'], board);   // A-2-3-4-5
+  const sixHigh = evaluateHand(['6h', '2c'], board); // 2-3-4-5-6
+  expect(compareHands(sixHigh, wheel)).toBe(-1);
+});
+
+test('compareHands: 같은 원페어면 높은 페어가 이김', () => {
+  const board = ['2c', '5d', '9s', 'Jh', '3c'];
+  const aces = evaluateHand(['Ah', 'Ad'], board);
+  const kings = evaluateHand(['Kh', 'Kd'], board);
+  expect(compareHands(aces, kings)).toBe(-1);
+  expect(compareHands(kings, aces)).toBe(1);
 });

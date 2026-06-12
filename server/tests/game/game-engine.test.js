@@ -1,4 +1,4 @@
-import { initHand, processAction, advancePhase } from '../../src/game/game-engine.js';
+import { initHand, processAction, advancePhase, resolveShowdown } from '../../src/game/game-engine.js';
 
 const makePlayers = (count) =>
   Array.from({ length: count }, (_, i) => ({
@@ -50,6 +50,82 @@ test('processAction auto_fold: consecutive_auto_folds 증가', () => {
   const next = processAction(state, firstPlayer, 'auto_fold');
   const p = next.players.find(p => p.player_id === firstPlayer);
   expect(p.consecutive_auto_folds).toBe(1);
+});
+
+test('베팅 라운드 완료: 전원 콜 후 BB 체크 → _round_done', () => {
+  // dealer p1 → SB p2, BB p3, 첫 액션 p4
+  let state = initHand('g1', makePlayers(4), 0);
+  state = processAction(state, state.current_turn, 'call');  // p4
+  state = processAction(state, state.current_turn, 'call');  // p1
+  state = processAction(state, state.current_turn, 'call');  // p2 (SB)
+  state = processAction(state, state.current_turn, 'check'); // p3 (BB)
+  expect(state._round_done).toBe(true);
+  expect(state.current_turn).toBeNull();
+});
+
+test('BB 옵션: 전원 콜이어도 BB가 행동하기 전엔 라운드 미완료', () => {
+  let state = initHand('g1', makePlayers(4), 0);
+  state = processAction(state, state.current_turn, 'call'); // p4
+  state = processAction(state, state.current_turn, 'call'); // p1
+  state = processAction(state, state.current_turn, 'call'); // p2 (SB)
+  // 전원 20 매치 상태지만 BB(p3)는 아직 체크/레이즈 옵션이 남아 있다
+  expect(state._round_done).toBe(false);
+  expect(state.current_turn).toBe('p3');
+});
+
+test('레이즈는 액션을 재오픈: 먼저 콜한 플레이어도 다시 응답해야 라운드 완료', () => {
+  let state = initHand('g1', makePlayers(4), 0);
+  state = processAction(state, state.current_turn, 'call');          // p4 콜 20
+  state = processAction(state, state.current_turn, 'raise', 60);     // p1 레이즈 60
+  state = processAction(state, state.current_turn, 'call');          // p2 (SB)
+  state = processAction(state, state.current_turn, 'call');          // p3 (BB)
+  // p4는 레이즈에 아직 응답 안 함 → 미완료
+  expect(state._round_done).toBe(false);
+  expect(state.current_turn).toBe('p4');
+  state = processAction(state, 'p4', 'call');
+  expect(state._round_done).toBe(true);
+});
+
+test('플랍은 새 베팅 라운드: 전원이 체크해야 라운드 완료', () => {
+  let state = initHand('g1', makePlayers(4), 0);
+  state = processAction(state, state.current_turn, 'call');
+  state = processAction(state, state.current_turn, 'call');
+  state = processAction(state, state.current_turn, 'call');
+  state = processAction(state, state.current_turn, 'check'); // BB → 프리플랍 완료
+  state = advancePhase(state);
+  expect(state.phase).toBe('flop');
+
+  state = processAction(state, state.current_turn, 'check'); // 첫 체크
+  expect(state._round_done).toBe(false); // 나머지 3명이 남았다
+  state = processAction(state, state.current_turn, 'check');
+  state = processAction(state, state.current_turn, 'check');
+  state = processAction(state, state.current_turn, 'check');
+  expect(state._round_done).toBe(true);
+});
+
+test('전원 폴드로 1명만 남으면 라운드 즉시 완료', () => {
+  let state = initHand('g1', makePlayers(4), 0);
+  state = processAction(state, state.current_turn, 'fold'); // p4
+  state = processAction(state, state.current_turn, 'fold'); // p1
+  state = processAction(state, state.current_turn, 'fold'); // p2 → p3만 남음
+  expect(state._round_done).toBe(true);
+});
+
+test('resolveShowdown: 같은 족보(원페어)라도 높은 페어가 단독 승리한다', () => {
+  const state = {
+    pot: 100,
+    phase: 'river',
+    community_cards: ['2c', '5d', '9s', 'Jh', '3c'],
+    players: [
+      { player_id: 'p1', status: 'active', chips: 0, hand: ['Ah', 'Ad'] }, // A 페어
+      { player_id: 'p2', status: 'active', chips: 0, hand: ['Kh', 'Kd'] }, // K 페어
+    ],
+  };
+  const result = resolveShowdown(state);
+  const p1 = result.players.find(p => p.player_id === 'p1');
+  const p2 = result.players.find(p => p.player_id === 'p2');
+  expect(p1.chips).toBe(100); // A 페어가 팟 전부 획득
+  expect(p2.chips).toBe(0);   // K 페어는 무승부 아님
 });
 
 test('advancePhase preflop→flop: 커뮤니티 카드 3장', () => {

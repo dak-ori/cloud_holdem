@@ -140,7 +140,8 @@ async function startNextHand(gameId, state) {
   if (surviving.length < 2) {
     await publish(gameId, { type: 'game_over', winner: surviving[0] });
     await deleteGameState(gameId);
-    untrackGame(gameId);
+    await removeRoom(gameId); // 끝난 게임의 방이 로비에 남지 않도록
+    await untrackGame(gameId);
     // 게임 종료 → 구독 해제
     await unsubscribe(gameId);
     subscribedGames.delete(gameId);
@@ -169,7 +170,7 @@ function startCountdown(gameId, players) {
       })), 0);
       await setGameState(gameId, state);
       await setTurnDeadline(gameId, Date.now() + 20_000);
-      trackGame(gameId);
+      await trackGame(gameId);
       await publish(gameId, { type: 'game_started', state });
     }
   }, 1000);
