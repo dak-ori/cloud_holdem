@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Hold'em — AWS 인프라 발표</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #07070f; color: #e7e9ff; font-family: 'Noto Sans KR', sans-serif; }
+  body {
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(124,58,237,.18), transparent 40%),
+      radial-gradient(circle at 85% 75%, rgba(34,211,238,.12), transparent 45%);
+  }
+  .slide {
+    display: none; width: 100vw; height: 100vh;
+    padding: 56px 90px; flex-direction: column;
+  }
+  .slide.active { display: flex; }
+  .kicker { font-size: 14px; letter-spacing: 4px; color: #22d3ee; font-weight: 700; margin-bottom: 10px; }
+  h1 {
+    font-family: 'Orbitron'; font-size: 64px; letter-spacing: 3px; line-height: 1.15;
+    background: linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 24px rgba(167,139,250,.4));
+  }
+  h2 { font-size: 38px; font-weight: 900; margin-bottom: 28px; }
+  h2 .hl { color: #a78bfa; }
+  .sub { color: #8b8fb8; font-size: 22px; margin-top: 18px; }
+  ul { list-style: none; font-size: 23px; line-height: 1.6; }
+  li { margin-bottom: 16px; padding-left: 34px; position: relative; }
+  li::before { content: '◆'; position: absolute; left: 0; color: #22d3ee; font-size: 17px; top: 5px; }
+  li b { color: #fff; }
+  li .dim { color: #8b8fb8; font-size: 19px; }
+  .cols { display: flex; gap: 40px; flex: 1; min-height: 0; }
+  .col { flex: 1; min-width: 0; }
+  .panel {
+    background: rgba(17,17,32,.72); border: 1px solid rgba(124,58,237,.35);
+    border-radius: 18px; padding: 26px 30px; margin-bottom: 18px;
+  }
+  .panel h3 { color: #a78bfa; font-size: 17px; letter-spacing: 2px; margin-bottom: 12px; }
+  .panel p, .panel li { font-size: 20px; }
+  img.full { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 14px; border: 1px solid rgba(124,58,237,.3); }
+  .imgwrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  .foot { position: fixed; bottom: 22px; right: 36px; color: #565a82; font-size: 14px; font-family: 'Orbitron'; }
+  .badge {
+    display: inline-block; padding: 5px 16px; border-radius: 999px; font-size: 13px; letter-spacing: 3px;
+    color: #22d3ee; border: 1px solid rgba(34,211,238,.45); background: rgba(34,211,238,.08); margin-bottom: 22px;
+  }
+  code, .mono { font-family: ui-monospace, Consolas, monospace; color: #7dd3fc; font-size: 0.92em; }
+  table { border-collapse: collapse; width: 100%; font-size: 20px; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(124,58,237,.25); }
+  th { color: #a78bfa; font-size: 16px; letter-spacing: 1px; }
+  .big-num { font-family: 'Orbitron'; font-size: 42px; color: #22d3ee; }
+  .check li::before { content: '✓'; color: #34d399; font-size: 21px; top: 2px; }
+  .warn li::before { content: '⚡'; color: #f59e0b; }
+  .center-v { justify-content: center; }
+  .demo-step { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; font-size: 22px; }
+  .demo-step .n {
+    font-family: 'Orbitron'; min-width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(90deg, #7c3aed, #db2777); font-size: 19px; font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<!-- 1. 타이틀 -->
+<section class="slide active center-v">
+  <div class="badge">CLOUD COMPUTING PROJECT</div>
+  <h1>CLOUD HOLD'EM</h1>
+  <p class="sub">AWS ECS 기반 실시간 멀티플레이어 텍사스 홀덤</p>
+  <p class="sub" style="font-size:18px; margin-top:60px;">발표자: ___________ &nbsp;·&nbsp; 2026.06</p>
+</section>
+
+<!-- 2. 프로젝트 개요 -->
+<section class="slide">
+  <div class="kicker">01 — OVERVIEW</div>
+  <h2>프로젝트 개요</h2>
+  <div class="cols">
+    <div class="col">
+      <ul>
+        <li><b>4인 텍사스 홀덤</b> 웹 게임 <span class="dim">— 회원가입 없이 닉네임만으로 즉시 플레이</span></li>
+        <li><b>실시간 멀티플레이어</b> <span class="dim">— WebSocket 양방향 통신, 20초 턴 타이머</span></li>
+        <li><b>다중 테이블</b> <span class="dim">— 여러 게임이 동시 진행</span></li>
+        <li>스택: <b>Node.js(ws) + React + Redis</b></li>
+      </ul>
+      <div class="panel" style="margin-top:24px;">
+        <h3>이 발표의 초점</h3>
+        <p>게임을 <b>AWS 위에서 어떻게 확장 가능하고 안정적으로</b> 운영하는가 — 컨테이너 오케스트레이션, 상태 관리, 오토스케일링</p>
+      </div>
+    </div>
+    <div class="col imgwrap"><img class="full" src="assets/lobby.png" alt="로비"></div>
+  </div>
+</section>
+
+<!-- 3. 설계 목표 -->
+<section class="slide">
+  <div class="kicker">02 — REQUIREMENTS</div>
+  <h2>게임 서버의 인프라 요구사항</h2>
+  <ul style="font-size:25px;">
+    <li><b>실시간 양방향 통신</b> — HTTP 폴링이 아닌 WebSocket, 연결이 오래 유지되어야 함</li>
+    <li><b>수평 확장</b> — 동시 접속이 늘면 서버를 늘려야 함 (Auto Scaling)</li>
+    <li><b>서버 장애 ≠ 게임 증발</b> — 어떤 서버가 죽어도 게임 상태는 보존</li>
+    <li><b>분산 환경의 일관성</b> — 같은 게임의 4명이 서로 다른 서버에 붙어도 동작</li>
+  </ul>
+  <div class="panel" style="margin-top:18px;">
+    <h3>핵심 설계 결정</h3>
+    <p style="font-size:23px;">서버를 <b>완전한 Stateless</b>로 만들고, 게임 상태는 전부 <b>ElastiCache Redis</b>에 둔다<br>
+    <span class="dim" style="font-size:19px;">→ sticky session 불필요, 어느 컨테이너든 어느 플레이어든 처리 가능</span></p>
+  </div>
+</section>
+
+<!-- 4. 아키텍처 -->
+<section class="slide">
+  <div class="kicker">03 — ARCHITECTURE</div>
+  <h2>전체 아키텍처</h2>
+  <div class="imgwrap"><img class="full" src="assets/architecture.png" alt="아키텍처"></div>
+</section>
+
+<!-- 5. 왜 ECS인가 -->
+<section class="slide">
+  <div class="kicker">04 — WHY ECS</div>
+  <h2>왜 <span class="hl">ECS(EC2)</span>인가 — EKS에서 전환한 이유</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="panel">
+        <h3>처음 계획: EKS (Kubernetes)</h3>
+        <ul>
+          <li>컨트롤 플레인 비용 <b>$73/월 고정</b> <span class="dim">— 워커 노드와 별도</span></li>
+          <li>학습 곡선: 매니페스트, Helm, IRSA…</li>
+          <li>4인 게임 서버 2~4개에는 <b>과한 복잡도</b></li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel" style="border-color: rgba(34,211,238,.5);">
+        <h3 style="color:#22d3ee;">전환: ECS on EC2</h3>
+        <ul class="check">
+          <li>클러스터 관리 <b>무료</b> — 컨테이너 비용만</li>
+          <li>ALB·ASG·CloudWatch와 <b>네이티브 통합</b></li>
+          <li>Task Definition 하나로 배포 정의 끝</li>
+          <li>Fargate 대신 EC2 — <b>비용 절감</b> + ASG 직접 제어</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="sub" style="font-size:19px;">교훈: 기술 선택은 "유행"이 아니라 <b>규모와 팀에 맞는 복잡도</b>로</p>
+</section>
+
+<!-- 6. Stateless + Redis -->
+<section class="slide">
+  <div class="kicker">05 — STATE MANAGEMENT</div>
+  <h2>Stateless 서버 + <span class="hl">ElastiCache Redis</span></h2>
+  <div class="cols">
+    <div class="col">
+      <ul>
+        <li><b>게임 상태 전부 Redis에</b> <span class="dim">— 카드, 팟, 턴, 타이머 deadline까지</span></li>
+        <li><b>Pub/Sub</b>로 게임 이벤트 브로드캐스트 <span class="dim">— 다른 태스크에 붙은 플레이어에게도 전달</span></li>
+        <li><b>Lua 스크립트</b>로 조회+검증+업데이트 원자 실행 <span class="dim">— race condition 방어</span></li>
+        <li>턴 타이머: <code>turn_deadline</code> 키 1초 폴링 → 만료 시 auto-fold</li>
+      </ul>
+    </div>
+    <div class="col">
+      <div class="panel">
+        <h3>실제로 검증한 시나리오</h3>
+        <p style="font-size:21px;">4명의 클라이언트가 ALB를 거쳐 <b>서로 다른 ECS 태스크에 분산 접속</b> → 프리플랍부터 쇼다운까지 풀 게임 완주 ✓</p>
+        <p style="font-size:18px; color:#8b8fb8; margin-top:10px;">= Redis 상태 공유와 크로스 인스턴스 Pub/Sub이 프로덕션에서 동작함을 증명</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. 배포 파이프라인 -->
+<section class="slide">
+  <div class="kicker">06 — DEPLOYMENT</div>
+  <h2>컨테이너 배포 파이프라인</h2>
+  <div class="panel" style="text-align:center; font-size:24px; padding:34px;">
+    <span class="mono">Dockerfile</span> (node:20-alpine, 56MB)
+    &nbsp;→&nbsp; <b style="color:#3b82f6;">ECR</b> push
+    &nbsp;→&nbsp; <b style="color:#a78bfa;">Task Definition</b> 등록
+    &nbsp;→&nbsp; <b style="color:#22d3ee;">ECS Service</b> 롤링 배포
+  </div>
+  <ul style="margin-top:20px;">
+    <li><b>awsvpc 네트워크 모드</b> — 태스크마다 자체 ENI/IP, SG를 태스크 단위로 적용</li>
+    <li><b>롤링 배포</b>: minimumHealthy 100% / maximum 200% <span class="dim">— 무중단, 새 태스크 healthy 후 구버전 종료</span></li>
+    <li><b>컨테이너 헬스체크</b> + ALB <code>/health</code> 헬스체크 이중화</li>
+    <li>재배포 = 이미지 push 후 <code>update-service --force-new-deployment</code> 한 줄</li>
+  </ul>
+</section>
+
+<!-- 8. ALB -->
+<section class="slide">
+  <div class="kicker">07 — TRAFFIC</div>
+  <h2>ALB — WebSocket을 위한 설정</h2>
+  <ul style="font-size:25px;">
+    <li><b>idle timeout 3600초</b> <span class="dim">— 기본 60초면 게임 중 WebSocket이 끊김. 가장 중요한 한 줄</span></li>
+    <li><b>target-type: ip</b> <span class="dim">— awsvpc 모드 태스크의 ENI로 직접 라우팅</span></li>
+    <li>헬스체크: <code>GET /health</code> 30초 간격, healthy 2회 / unhealthy 3회</li>
+    <li>HTTP 80 리스너 → 타깃 그룹 포워딩 <span class="dim">— ws:// 업그레이드는 ALB가 네이티브 지원</span></li>
+  </ul>
+  <div class="panel" style="margin-top:16px;">
+    <h3>왜 NLB가 아니라 ALB?</h3>
+    <p style="font-size:21px;">L7 헬스체크(경로 기반)와 WebSocket 업그레이드 처리, 추후 경로 라우팅 확장성 — 게임 트래픽 규모에서는 ALB가 운영상 단순</p>
+  </div>
+</section>
+
+<!-- 9. Auto Scaling -->
+<section class="slide">
+  <div class="kicker">08 — AUTO SCALING</div>
+  <h2>2단 Auto Scaling</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="panel">
+        <h3>① 서비스 레벨 (Application Auto Scaling)</h3>
+        <ul>
+          <li>ECS Service 태스크 수: <b>2 ~ 8개</b></li>
+          <li>CPU 70% 타깃 트래킹</li>
+          <li>scale-out 60s / scale-in 300s 쿨다운</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>② 인프라 레벨 (Capacity Provider)</h3>
+        <ul>
+          <li>ASG: <b>t3.small 2 ~ 4대</b></li>
+          <li>타깃 capacity 80% — 태스크가 못 들어가면 EC2 자동 증설</li>
+          <li>관리형 스케일링: ECS가 ASG를 직접 조정</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel" style="height:100%;">
+        <h3>동작 흐름</h3>
+        <p style="font-size:21px; line-height:1.8;">
+        트래픽 증가<br>→ 태스크 CPU 70% 초과<br>→ <b>태스크 증설</b> (서비스 레벨)<br>→ EC2에 빈 자리 부족<br>→ <b>EC2 증설</b> (Capacity Provider)<br><br>
+        <span class="dim">반대로 한가하면 역순으로 축소 — 실습 중 비용 절약을 위해 desired 0으로 내려두기도</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. 보안 -->
+<section class="slide">
+  <div class="kicker">09 — SECURITY</div>
+  <h2>최소 권한 설계</h2>
+  <div class="panel" style="text-align:center; font-size:22px;">
+    🔒 <b style="color:#a78bfa;">ALB-SG</b> <span class="dim">(80 ← 인터넷)</span>
+    &nbsp;→&nbsp; <b style="color:#22d3ee;">EC2-SG</b> <span class="dim">(3001 ← ALB-SG만)</span>
+    &nbsp;→&nbsp; <b style="color:#ef4444;">Redis-SG</b> <span class="dim">(6379 ← EC2-SG만)</span>
+  </div>
+  <div class="cols" style="margin-top:18px;">
+    <div class="col">
+      <ul>
+        <li><b>보안 그룹 참조 체인</b> — IP가 아닌 SG 참조로 인바운드 제한. Redis는 인터넷에서 도달 불가</li>
+        <li><b>IAM 역할 3종 분리</b><br><span class="dim">Task Role(S3 쓰기만) / Execution Role(ECR pull·로그) / Instance Role(ECS 등록)</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <ul>
+        <li><b>IAM 사용자도 최소 권한</b> — 필요한 액션만 명시한 정책 파일을 관리하며 점진적으로 요청<br><span class="dim">예: CreateLoadBalancer의 숨은 의존 권한(ec2:DescribeAccountAttributes)을 실패 → 분석 → 추가로 해결</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 11. 검증 -->
+<section class="slide">
+  <div class="kicker">10 — VERIFICATION</div>
+  <h2>검증 — "되는 것 같다"가 아니라 <span class="hl">증명</span></h2>
+  <ul class="check" style="font-size:24px;">
+    <li>단위/통합 테스트 <b>44개</b> <span class="dim">— 게임 엔진(핸드 판정, 베팅 라운드), Redis 타이머, WS 연결 종료 처리</span></li>
+    <li>로컬 E2E: 실제 브라우저 4개 자동 조작 → 풀 게임 완주 (Playwright)</li>
+    <li><b>프로덕션 E2E</b>: ALB 경유 4클라이언트 시뮬레이션 → 멀티 태스크 분산 환경에서 쇼다운까지 완주</li>
+    <li>ALB 헬스체크 OK · 타깃 2/2 healthy · 롤링 배포 무중단 확인</li>
+  </ul>
+  <div class="panel" style="margin-top:14px;">
+    <h3>TDD로 잡은 실제 버그들</h3>
+    <p style="font-size:20px;">베팅 라운드 종료 판정 누락(게임이 플랍을 못 봄) · 턴 타이머 TTL이 deadline과 동시 만료(auto-fold 불능) · 쇼다운 키커 무시(A페어=K페어 무승부) · 연결 끊김 시 유령 방 잔류</p>
+  </div>
+</section>
+
+<!-- 12. 데모 (스크린샷 버전) -->
+<section class="slide">
+  <div class="kicker">11 — DEMO (SCREENSHOTS)</div>
+  <h2>게임 플레이</h2>
+  <div class="cols">
+    <div class="col imgwrap"><img class="full" src="assets/lobby.png" alt="로비"></div>
+    <div class="col imgwrap"><img class="full" src="assets/game-table.png" alt="게임 테이블"></div>
+  </div>
+  <p class="sub" style="font-size:17px; text-align:center;">로비(방 생성/입장) → 4인 자동 시작 → 블라인드/베팅 → 쇼다운 → 칩 정산 후 다음 핸드</p>
+</section>
+
+<!-- 13. 데모 (라이브 버전) -->
+<section class="slide">
+  <div class="kicker">11 — LIVE DEMO</div>
+  <h2>라이브 데모 🔴</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="demo-step"><span class="n">1</span><span>브라우저 탭 4개로 접속 <span class="dim">(시크릿 창 혼용)</span></span></div>
+      <div class="demo-step"><span class="n">2</span><span>탭1: 닉네임 입력 → <b>방 만들기</b></span></div>
+      <div class="demo-step"><span class="n">3</span><span>탭2~4: 같은 방 <b>입장</b> → 5초 카운트다운</span></div>
+      <div class="demo-step"><span class="n">4</span><span>베팅 한 바퀴 <span class="dim">(콜/체크로 빠르게)</span> → 플랍 공개</span></div>
+      <div class="demo-step"><span class="n">5</span><span>탭 하나 <b>방치</b> → 20초 auto-fold 시연</span></div>
+      <div class="demo-step"><span class="n">6</span><span>쇼다운 → 칩 정산 → 다음 핸드 자동 시작</span></div>
+    </div>
+    <div class="col">
+      <div class="panel" style="height:100%;">
+        <h3>접속 주소</h3>
+        <p class="mono" style="font-size:19px; word-break:break-all;">http://holdem-client-026951011097.s3-website.ap-northeast-2.amazonaws.com</p>
+        <p style="color:#8b8fb8; font-size:17px; margin-top:14px;">(백업: 로컬 데모 — localhost:5173)</p>
+        <h3 style="margin-top:26px;">발표 전 체크리스트</h3>
+        <ul style="font-size:18px;">
+          <li>ASG desired 2로 켜두기 (탄력 복구 ~5분)</li>
+          <li>ALB 헬스체크 green 확인</li>
+          <li>프론트 S3 배포 완료 확인</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14. 비용 & 마무리 -->
+<section class="slide">
+  <div class="kicker">12 — COST & LESSONS</div>
+  <h2>비용과 배운 점</h2>
+  <div class="cols">
+    <div class="col">
+      <table>
+        <tr><th>리소스</th><th>사양</th><th>월 예상</th></tr>
+        <tr><td>EC2 (ECS 노드)</td><td>t3.small ×2</td><td>~$42</td></tr>
+        <tr><td>ElastiCache</td><td>cache.t3.micro</td><td>~$18</td></tr>
+        <tr><td>ALB</td><td>+ LCU</td><td>~$17+</td></tr>
+        <tr><td>S3 / ECR</td><td>정적+이미지</td><td>~$1</td></tr>
+        <tr><td colspan="2"><b>합계</b> <span class="dim">(EKS였다면 +$73)</span></td><td><b class="big-num" style="font-size:26px;">~$78</b></td></tr>
+      </table>
+    </div>
+    <div class="col">
+      <ul style="font-size:21px;">
+        <li><b>Stateless + 외부 상태 저장소</b>가 수평 확장의 열쇠</li>
+        <li>관리형 서비스 통합(ECS+ALB+ASG)이 직접 조립보다 운영 부담↓</li>
+        <li>최소 권한은 불편하지만 <b>실패 메시지가 곧 문서</b></li>
+        <li>안 쓸 때 끄기(ASG 0) — 클라우드 비용은 습관</li>
+      </ul>
+      <p style="margin-top:26px; font-size:24px;"><b>감사합니다</b> 🃏</p>
+    </div>
+  </div>
+</section>
+
+<div class="foot"><span id="cur">1</span> / <span id="total">14</span> &nbsp;·&nbsp; ← →</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  document.getElementById('total').textContent = slides.length;
+  let i = 0;
+  function show(n) {
+    slides[i].classList.remove('active');
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides[i].classList.add('active');
+    document.getElementById('cur').textContent = i + 1;
+  }
+  addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') show(i + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') show(i - 1);
+    if (e.key === 'Home') show(0);
+  });
+  addEventListener('click', () => show(i + 1));
+</script>
+</body>
+</html>
