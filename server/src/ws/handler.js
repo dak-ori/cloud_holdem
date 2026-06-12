@@ -28,12 +28,41 @@ export function handleConnection(ws) {
   });
 
   ws.on('close', async () => {
+    // 브라우저 닫기 등 leave_room 없이 끊긴 경우에도 방 정리
     if (currentGameId) {
-      unregister(currentGameId, playerId);
+      try {
+        await handlePlayerLeave(currentGameId, playerId);
+      } catch (e) {
+        console.error('[WS] close cleanup failed:', e.message);
+      }
     }
   });
 
   ws.send(JSON.stringify({ type: 'connected', player_id: playerId }));
+}
+
+// 명시적 leave_room과 연결 끊김(close) 양쪽에서 공유하는 방 정리 로직
+async function handlePlayerLeave(gameId, playerId) {
+  const handle = countdowns.get(gameId);
+  if (handle) {
+    clearInterval(handle);
+    countdowns.delete(gameId);
+    broadcastToGame(gameId, { type: 'countdown_cancelled', message: '플레이어가 떠났습니다' });
+  }
+  const room = await getRoom(gameId);
+  if (room) {
+    room.players = room.players.filter(p => p.player_id !== playerId);
+    if (room.players.length === 0) {
+      await removeRoom(gameId);
+      // 마지막 플레이어 → Redis 채널 구독 해제
+      await unsubscribe(gameId);
+      subscribedGames.delete(gameId);
+    } else {
+      await updateRoom(gameId, room);
+      broadcastToGame(gameId, { type: 'player_left', room });
+    }
+  }
+  unregister(gameId, playerId);
 }
 
 async function route(msg, ws, playerId, currentGameId, setGameId) {
@@ -71,26 +100,7 @@ async function route(msg, ws, playerId, currentGameId, setGameId) {
     }
     case 'leave_room': {
       if (!currentGameId) break;
-      const handle = countdowns.get(currentGameId);
-      if (handle) {
-        clearInterval(handle);
-        countdowns.delete(currentGameId);
-        broadcastToGame(currentGameId, { type: 'countdown_cancelled', message: '플레이어가 떠났습니다' });
-      }
-      const room = await getRoom(currentGameId);
-      if (room) {
-        room.players = room.players.filter(p => p.player_id !== playerId);
-        if (room.players.length === 0) {
-          await removeRoom(currentGameId);
-          // 마지막 플레이어 → Redis 채널 구독 해제
-          await unsubscribe(currentGameId);
-          subscribedGames.delete(currentGameId);
-        } else {
-          await updateRoom(currentGameId, room);
-          broadcastToGame(currentGameId, { type: 'player_left', room });
-        }
-      }
-      unregister(currentGameId, playerId);
+      await handlePlayerLeave(currentGameId, playerId);
       setGameId(null);
       break;
     }
