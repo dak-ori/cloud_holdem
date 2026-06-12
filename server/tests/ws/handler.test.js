@@ -27,9 +27,9 @@ afterAll(async () => {
 });
 
 // 테스트용 WS 클라이언트: 받은 메시지를 큐에 쌓고 타입별로 기다린다
-function connect() {
+function connect(pid) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://localhost:${port}`);
+    const ws = new WebSocket(`ws://localhost:${port}${pid ? `/?pid=${pid}` : ''}`);
     const queue = [];
     const waiters = [];
     ws.on('message', (raw) => {
@@ -51,7 +51,7 @@ function connect() {
         });
       },
     };
-    client.waitFor('connected').then(() => resolve(client));
+    client.waitFor('connected').then((msg) => { client.playerId = msg.player_id; resolve(client); });
   });
 }
 
@@ -87,6 +87,46 @@ test('대기 중 플레이어가 연결을 끊으면 방 인원에서 제거된�
   host.ws.close();
   observer.ws.close();
 }, 15_000);
+
+test('클라이언트가 보낸 pid로 접속하면 같은 player_id를 돌려받는다 (재접속 신원 유지)', async () => {
+  const pid = '11111111-2222-4333-8444-555555555555';
+  const c = await connect(pid);
+  expect(c.playerId).toBe(pid);
+  c.ws.close();
+});
+
+test('게임 중 끊긴 플레이어가 같은 pid로 재접속하면 게임에 재합류한다', async () => {
+  // 4명 입장 → 게임 시작
+  const host = await connect();
+  host.send({ type: 'create_room', nickname: 'kim' });
+  const { room } = await host.waitFor('room_created');
+  const guests = [];
+  for (const nick of ['lee', 'park', 'choi']) {
+    const g = await connect();
+    g.send({ type: 'join_room', game_id: room.game_id, nickname: nick });
+    guests.push(g);
+  }
+  await host.waitFor('game_started', 10_000); // 5초 카운트다운 포함
+
+  // choi가 브라우저를 닫음 (leave_room 없이)
+  const choi = guests[2];
+  const choiPid = choi.playerId;
+  choi.ws.close();
+  await new Promise(r => setTimeout(r, 300));
+
+  // 게임 중이므로 방 인원은 그대로 4명이어야 한다
+  const obs = await connect();
+  const rooms = await pollRooms(obs, rs => rs[0]?.players.length === 4);
+  expect(rooms[0].players).toHaveLength(4);
+
+  // 같은 pid로 재접속 → 재합류
+  const back = await connect(choiPid);
+  const rejoined = await back.waitFor('rejoined');
+  expect(rejoined.room.game_id).toBe(room.game_id);
+  expect(rejoined.state.players.map(p => p.player_id)).toContain(choiPid);
+
+  [host, ...guests.slice(0, 2), obs, back].forEach(c => c.ws.close());
+}, 25_000);
 
 test('마지막 플레이어가 연결을 끊으면 방이 삭제된다', async () => {
   const host = await connect();

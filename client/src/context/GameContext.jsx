@@ -29,6 +29,13 @@ function reducer(state, action) {
       return { ...state, gameState: action.state, page: 'game', countdown: null };
     case 'STATE_UPDATE':
       return { ...state, gameState: action.state };
+    case 'REJOINED':
+      return {
+        ...state,
+        room: action.room,
+        gameState: action.state,
+        page: action.state ? 'game' : 'waiting',
+      };
     case 'GAME_OVER':
       return { ...state, page: 'gameover', gameState: { ...state.gameState, winner: action.winner } };
     case 'SET_ERROR':
@@ -49,7 +56,11 @@ export function GameProvider({ children }) {
     connect();
 
     const unsubs = [
-      on('connected', (msg) => dispatch({ type: 'SET_PLAYER_ID', playerId: msg.player_id })),
+      on('connected', (msg) => {
+        localStorage.setItem('holdem_player_id', msg.player_id);
+        dispatch({ type: 'SET_PLAYER_ID', playerId: msg.player_id });
+      }),
+      on('rejoined', (msg) => dispatch({ type: 'REJOINED', room: msg.room, state: msg.state })),
       on('room_created', (msg) => dispatch({ type: 'SET_ROOM', room: msg.room })),
       on('player_joined', (msg) => dispatch({ type: 'SET_ROOM', room: msg.room })),
       on('countdown', (msg) => dispatch({ type: 'SET_COUNTDOWN', seconds: msg.seconds })),

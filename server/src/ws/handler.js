@@ -13,8 +13,13 @@ const countdowns = new Map();
 // 이미 Redis 채널 구독된 gameId들
 const subscribedGames = new Set();
 
-export function handleConnection(ws) {
-  let playerId = uuidv4();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function handleConnection(ws, req) {
+  // 재접속 시 클라이언트가 기존 player_id를 보내면 신원을 유지한다
+  const query = new URLSearchParams((req?.url || '').split('?')[1] || '');
+  const requestedPid = query.get('pid');
+  let playerId = UUID_RE.test(requestedPid || '') ? requestedPid : uuidv4();
   let currentGameId = null;
 
   ws.on('message', async (raw) => {
@@ -29,17 +34,41 @@ export function handleConnection(ws) {
   });
 
   ws.on('close', async () => {
-    // 브라우저 닫기 등 leave_room 없이 끊긴 경우에도 방 정리
-    if (currentGameId) {
-      try {
+    if (!currentGameId) return;
+    try {
+      // 게임 진행 중이면 자리를 유지한다 — 같은 pid로 재접속해 복귀 가능,
+      // 방치하면 턴 타이머가 auto_fold로 처리. 대기 방이면 즉시 정리.
+      const inProgress = await getGameState(currentGameId);
+      if (inProgress) {
+        unregister(currentGameId, playerId);
+      } else {
         await handlePlayerLeave(currentGameId, playerId);
-      } catch (e) {
-        console.error('[WS] close cleanup failed:', e.message);
       }
+    } catch (e) {
+      console.error('[WS] close cleanup failed:', e.message);
     }
   });
 
   ws.send(JSON.stringify({ type: 'connected', player_id: playerId }));
+
+  // 재접속이면 진행 중이던 게임에 재합류
+  rejoinIfInGame(ws, playerId, (gid) => { currentGameId = gid; }).catch(e =>
+    console.error('[WS] rejoin failed:', e.message));
+}
+
+async function rejoinIfInGame(ws, playerId, setGameId) {
+  const rooms = await listRooms();
+  const room = rooms.find(r => r.players.some(p => p.player_id === playerId));
+  if (!room) return;
+
+  setGameId(room.game_id);
+  register(room.game_id, playerId, ws);
+  if (!subscribedGames.has(room.game_id)) {
+    await subscribe(room.game_id, (event) => broadcastToGame(room.game_id, event));
+    subscribedGames.add(room.game_id);
+  }
+  const state = await getGameState(room.game_id);
+  ws.send(JSON.stringify({ type: 'rejoined', room, state }));
 }
 
 // 명시적 leave_room과 연결 끊김(close) 양쪽에서 공유하는 방 정리 로직

@@ -12,7 +12,9 @@ export function getSocket() {
 
 export function connect() {
   intentionalClose = false;
-  ws = new WebSocket(WS_URL);
+  // 저장된 player_id가 있으면 보내서 재접속 시 신원을 유지한다
+  const pid = localStorage.getItem('holdem_player_id');
+  ws = new WebSocket(pid ? `${WS_URL}/?pid=${pid}` : WS_URL);
 
   ws.onopen = () => {
     backoffMs = 500;
