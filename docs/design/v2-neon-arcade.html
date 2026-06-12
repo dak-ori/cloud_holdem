@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Hold'em — Neon Arcade</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #07070f;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(124,58,237,.22), transparent 40%),
+      radial-gradient(circle at 85% 75%, rgba(34,211,238,.16), transparent 45%);
+    color: #e7e9ff;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 56px 20px;
+    position: relative; overflow: hidden;
+  }
+  .grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(124,58,237,.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,.07) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse at 50% 20%, black 30%, transparent 75%);
+  }
+  .wrap { width: 100%; max-width: 520px; position: relative; }
+  .badge {
+    display: block; width: fit-content; margin: 0 auto 14px;
+    padding: 5px 16px; border-radius: 999px; font-size: 11px; letter-spacing: 3px;
+    color: #22d3ee; border: 1px solid rgba(34,211,238,.45);
+    background: rgba(34,211,238,.08);
+    box-shadow: 0 0 18px rgba(34,211,238,.25);
+  }
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    text-align: center; font-size: 42px; font-weight: 900; letter-spacing: 3px;
+    background: linear-gradient(90deg, #22d3ee 0%, #a78bfa 50%, #f472b6 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 22px rgba(167,139,250,.45));
+  }
+  .sub { text-align: center; color: #8b8fb8; font-size: 14px; margin: 12px 0 36px; }
+  .panel {
+    background: rgba(17,17,32,.72);
+    border: 1px solid rgba(124,58,237,.35);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset, 0 18px 50px rgba(0,0,0,.55);
+    padding: 26px;
+    margin-bottom: 22px;
+  }
+  .panel h3 { font-size: 13px; letter-spacing: 3px; color: #a78bfa; margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; }
+  input {
+    flex: 1; padding: 14px 16px;
+    background: rgba(7,7,15,.8);
+    border: 1px solid rgba(124,58,237,.4); border-radius: 12px;
+    color: #e7e9ff; font-size: 16px; font-family: inherit;
+    outline: none;
+  }
+  input::placeholder { color: #565a82; }
+  .btn-primary {
+    width: 100%; margin-top: 14px; padding: 15px;
+    background: linear-gradient(90deg, #7c3aed, #db2777);
+    color: #fff; font-weight: 700; font-size: 16px; letter-spacing: 1px;
+    border: none; border-radius: 12px; cursor: pointer;
+    box-shadow: 0 0 28px rgba(124,58,237,.5);
+    font-family: inherit;
+  }
+  .room {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 14px; margin-bottom: 10px;
+    background: rgba(124,58,237,.07);
+    border: 1px solid rgba(124,58,237,.2); border-radius: 12px;
+  }
+  .room:last-child { margin-bottom: 0; }
+  .names { font-size: 15px; }
+  .count { font-size: 12px; color: #22d3ee; margin-right: 12px; font-family: 'Orbitron', sans-serif; }
+  .btn-join {
+    padding: 8px 20px;
+    background: rgba(34,211,238,.12); color: #22d3ee;
+    border: 1px solid rgba(34,211,238,.5); border-radius: 8px;
+    font-size: 13px; cursor: pointer; font-family: inherit; font-weight: 700;
+    box-shadow: 0 0 14px rgba(34,211,238,.2);
+  }
+  .full { opacity: .35; }
+  .live { display: inline-block; width: 7px; height: 7px; background: #34d399; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 8px #34d399; }
+  .foot { text-align: center; color: #565a82; font-size: 12px; margin-top: 10px; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="wrap">
+    <span class="badge">REAL-TIME MULTIPLAYER</span>
+    <h1>CLOUD HOLD'EM</h1>
+    <p class="sub">닉네임 하나로 바로 시작하는 4인 텍사스 홀덤</p>
+
+    <div class="panel">
+      <h3>PLAYER ENTRY</h3>
+      <input placeholder="닉네임 입력 (최대 12자)">
+      <button class="btn-primary">⚡ 방 만들기</button>
+    </div>
+
+    <div class="panel">
+      <h3>LIVE TABLES</h3>
+      <div class="room">
+        <span class="names"><span class="live"></span>철수, 영희</span>
+        <span><span class="count">2/4</span><button class="btn-join">JOIN</button></span>
+      </div>
+      <div class="room">
+        <span class="names"><span class="live"></span>민준, 서연, 도윤</span>
+        <span><span class="count">3/4</span><button class="btn-join">JOIN</button></span>
+      </div>
+      <div class="room full">
+        <span class="names"><span class="live"></span>지우, 하준, 수아, 예준</span>
+        <span><span class="count">4/4</span><button class="btn-join">FULL</button></span>
+      </div>
+    </div>
+    <div class="foot">NO SIGN-UP · INSTANT PLAY</div>
+  </div>
+</body>
+</html>

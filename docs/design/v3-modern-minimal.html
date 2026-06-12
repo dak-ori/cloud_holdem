@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Hold'em — Modern Minimal</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #f6f7fb;
+    color: #1d2333;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 60px 20px;
+  }
+  .wrap { width: 100%; max-width: 500px; }
+  .logo {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .chip {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #4f46e5;
+    border: 4px dashed #c7d2fe;
+    box-shadow: 0 4px 12px rgba(79,70,229,.3);
+  }
+  h1 { text-align: center; font-size: 34px; font-weight: 900; letter-spacing: -1px; }
+  h1 .accent { color: #4f46e5; }
+  .sub { text-align: center; color: #6b7280; font-size: 15px; margin: 10px 0 36px; }
+  .card {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 1px 3px rgba(29,35,51,.06), 0 12px 32px rgba(29,35,51,.07);
+    padding: 26px;
+    margin-bottom: 18px;
+  }
+  .card h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  input {
+    width: 100%; padding: 14px 16px;
+    background: #f3f4f8;
+    border: 1.5px solid transparent; border-radius: 12px;
+    color: #1d2333; font-size: 16px; font-family: inherit; outline: none;
+  }
+  input:focus { border-color: #4f46e5; background: #fff; }
+  input::placeholder { color: #9aa1b1; }
+  .btn-primary {
+    width: 100%; margin-top: 12px; padding: 15px;
+    background: #4f46e5; color: #fff;
+    font-weight: 700; font-size: 16px;
+    border: none; border-radius: 12px; cursor: pointer;
+    box-shadow: 0 6px 16px rgba(79,70,229,.3);
+    font-family: inherit;
+  }
+  .list-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .list-head h3 { margin: 0; }
+  .list-head span { font-size: 13px; color: #6b7280; }
+  .room {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px; margin-bottom: 10px;
+    background: #f8f9fc;
+    border: 1px solid #eceef4; border-radius: 14px;
+  }
+  .room:last-child { margin-bottom: 0; }
+  .meta { display: flex; align-items: center; gap: 12px; }
+  .avatars { display: flex; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+    margin-left: -8px;
+  }
+  .avatar:first-child { margin-left: 0; }
+  .a1 { background: #f59e0b; } .a2 { background: #10b981; } .a3 { background: #3b82f6; } .a4 { background: #ef4444; }
+  .names { font-size: 14px; font-weight: 500; }
+  .count { font-size: 12px; color: #6b7280; }
+  .btn-join {
+    padding: 9px 22px;
+    background: #eef0ff; color: #4f46e5;
+    border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .full { opacity: .45; }
+  .features { display: flex; gap: 10px; margin-top: 4px; }
+  .feature {
+    flex: 1; text-align: center; padding: 14px 8px;
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(29,35,51,.05);
+    font-size: 12.5px; color: #6b7280;
+  }
+  .feature b { display: block; font-size: 18px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo"><div class="chip"></div></div>
+    <h1>Cloud <span class="accent">Hold'em</span></h1>
+    <p class="sub">회원가입 없이, 닉네임 하나로 친구들과 바로 한 판.</p>
+
+    <div class="card">
+      <h3>새 게임 시작</h3>
+      <input placeholder="닉네임 입력 (최대 12자)">
+      <button class="btn-primary">방 만들기</button>
+    </div>
+
+    <div class="card">
+      <div class="list-head"><h3>열린 방</h3><span>3개 진행 중</span></div>
+      <div class="room">
+        <div class="meta">
+          <div class="avatars"><div class="avatar a1">철</div><div class="avatar a2">영</div></div>
+          <div><div class="names">철수, 영희</div><div class="count">2 / 4 명</div></div>
+        </div>
+        <button class="btn-join">입장</button>
+      </div>
+      <div class="room">
+        <div class="meta">
+          <div class="avatars"><div class="avatar a3">민</div><div class="avatar a4">서</div><div class="avatar a1">도</div></div>
+          <div><div class="names">민준, 서연, 도윤</div><div class="count">3 / 4 명</div></div>
+        </div>
+        <button class="btn-join">입장</button>
+      </div>
+      <div class="room full">
+        <div class="meta">
+          <div class="avatars"><div class="avatar a2">지</div><div class="avatar a3">하</div><div class="avatar a4">수</div><div class="avatar a1">예</div></div>
+          <div><div class="names">지우, 하준, 수아, 예준</div><div class="count">4 / 4 명</div></div>
+        </div>
+        <button class="btn-join">만석</button>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature"><b>⚡</b>즉시 시작</div>
+      <div class="feature"><b>👥</b>4인 멀티플레이</div>
+      <div class="feature"><b>🃏</b>텍사스 홀덤</div>
+    </div>
+  </div>
+</body>
+</html>
