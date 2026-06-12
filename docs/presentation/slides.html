@@ -205,9 +205,39 @@
   </div>
 </section>
 
+<!-- 8.5 스토리지 -->
+<section class="slide">
+  <div class="kicker">08 — STORAGE</div>
+  <h2>S3 — 정적 호스팅과 게임 히스토리</h2>
+  <div class="cols">
+    <div class="col">
+      <div class="panel" style="height: 88%;">
+        <h3>버킷 A — React 정적 호스팅</h3>
+        <ul style="font-size:19px;">
+          <li>웹서버 없이 <b>S3 정적 웹사이트 호스팅</b>만으로 프론트엔드 서빙</li>
+          <li>버킷 정책으로 <code>s3:GetObject</code>만 퍼블릭 허용</li>
+          <li>빌드 시 ALB 주소 주입: <code>VITE_WS_URL=ws://ALB… npm run build</code></li>
+          <li>배포 = <code>aws s3 sync dist/ s3://holdem-client… --delete</code> 한 줄</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel" style="height: 88%;">
+        <h3>버킷 B — 게임 히스토리</h3>
+        <ul style="font-size:19px;">
+          <li>게임 종료 시 결과를 <code>games/{game_id}.json</code>으로 저장 <span class="dim">— 승자, 플레이어별 최종 칩, 종료 시각</span></li>
+          <li>컨테이너의 Task Role에는 <b>이 버킷 PutObject 권한만</b> 부여 (최소 권한)</li>
+          <li>저장 실패해도 게임 흐름은 막지 않음 <span class="dim">(비동기 + 로깅)</span></li>
+          <li>Redis는 "현재 상태", S3는 "영구 기록" — 핫/콜드 데이터 분리</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- 9. Auto Scaling -->
 <section class="slide">
-  <div class="kicker">08 — AUTO SCALING</div>
+  <div class="kicker">09 — AUTO SCALING</div>
   <h2>2단 Auto Scaling</h2>
   <div class="cols">
     <div class="col">
@@ -241,7 +271,7 @@
 
 <!-- 10. 보안 -->
 <section class="slide">
-  <div class="kicker">09 — SECURITY</div>
+  <div class="kicker">10 — SECURITY</div>
   <h2>최소 권한 설계</h2>
   <div class="panel" style="text-align:center; font-size:22px;">
     🔒 <b style="color:#a78bfa;">ALB-SG</b> <span class="dim">(80 ← 인터넷)</span>
@@ -265,7 +295,7 @@
 
 <!-- 11. 검증 -->
 <section class="slide">
-  <div class="kicker">10 — VERIFICATION</div>
+  <div class="kicker">11 — VERIFICATION</div>
   <h2>검증 — "되는 것 같다"가 아니라 <span class="hl">증명</span></h2>
   <ul class="check" style="font-size:24px;">
     <li>단위/통합 테스트 <b>44개</b> <span class="dim">— 게임 엔진(핸드 판정, 베팅 라운드), Redis 타이머, WS 연결 종료 처리</span></li>
@@ -281,7 +311,7 @@
 
 <!-- 12. 데모 (스크린샷 버전) -->
 <section class="slide">
-  <div class="kicker">11 — DEMO (SCREENSHOTS)</div>
+  <div class="kicker">12 — DEMO (SCREENSHOTS)</div>
   <h2>게임 플레이</h2>
   <div class="cols">
     <div class="col imgwrap"><img class="full" src="assets/lobby.png" alt="로비"></div>
@@ -292,7 +322,7 @@
 
 <!-- 13. 데모 (라이브 버전) -->
 <section class="slide">
-  <div class="kicker">11 — LIVE DEMO</div>
+  <div class="kicker">12 — LIVE DEMO</div>
   <h2>라이브 데모 🔴</h2>
   <div class="cols">
     <div class="col">
@@ -321,7 +351,7 @@
 
 <!-- 14. 비용 & 마무리 -->
 <section class="slide">
-  <div class="kicker">12 — COST & LESSONS</div>
+  <div class="kicker">13 — COST & LESSONS</div>
   <h2>비용과 배운 점</h2>
   <div class="cols">
     <div class="col">
