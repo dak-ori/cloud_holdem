@@ -7,9 +7,10 @@
     "test": "node --experimental-vm-modules node_modules/.bin/jest"
   },
   "dependencies": {
-    "ws": "^8.17.0",
+    "@aws-sdk/client-s3": "^3.1068.0",
     "ioredis": "^5.3.2",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "ws": "^8.17.0"
   },
   "devDependencies": {
     "jest": "^29.7.0"

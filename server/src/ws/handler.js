@@ -5,6 +5,7 @@ import { publish, subscribe, unsubscribe } from '../redis/pubsub.js';
 import { register, unregister, broadcastToGame } from './broadcaster.js';
 import { initHand, processAction, advancePhase, resolveShowdown } from '../game/game-engine.js';
 import { trackGame, untrackGame } from '../timer/turn-timer.js';
+import { saveGameHistory } from '../history/game-history.js';
 
 // gameId → countdown timer handle
 const countdowns = new Map();
@@ -139,6 +140,9 @@ async function startNextHand(gameId, state) {
 
   if (surviving.length < 2) {
     await publish(gameId, { type: 'game_over', winner: surviving[0] });
+    // 히스토리 저장 실패가 게임 종료 흐름을 막으면 안 된다
+    saveGameHistory(state, surviving[0]?.player_id).catch(e =>
+      console.error(`[History] Save failed for ${gameId}:`, e.message));
     await deleteGameState(gameId);
     await removeRoom(gameId); // 끝난 게임의 방이 로비에 남지 않도록
     await untrackGame(gameId);
