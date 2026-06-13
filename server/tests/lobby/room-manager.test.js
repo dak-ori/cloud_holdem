@@ -33,3 +33,9 @@ test('joinRoom: 4명 꽉 찬 방에 입장 거절', async () => {
   await expect(joinRoom(room.game_id, 'p5', 'P5')).rejects.toThrow('room full');
   await removeRoom(room.game_id);
 });
+
+test('joinRoom: 같은 player_id가 다른 닉네임으로 중복 입장 거절 (탭 간 pid 공유 방어)', async () => {
+  const room = await createRoom('p1', 'Alice');
+  await expect(joinRoom(room.game_id, 'p1', 'Bob')).rejects.toThrow('already in room');
+  await removeRoom(room.game_id);
+});

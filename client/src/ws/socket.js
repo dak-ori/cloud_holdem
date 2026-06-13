@@ -12,8 +12,10 @@ export function getSocket() {
 
 export function connect() {
   intentionalClose = false;
-  // 저장된 player_id가 있으면 보내서 재접속 시 신원을 유지한다
-  const pid = localStorage.getItem('holdem_player_id');
+  // 저장된 player_id가 있으면 보내서 재접속 시 신원을 유지한다.
+  // sessionStorage(탭별 저장)를 써야 한 브라우저의 탭 4개가 서로 다른
+  // 플레이어가 된다 — localStorage는 탭 간 공유라 전원이 같은 사람이 됨
+  const pid = sessionStorage.getItem('holdem_player_id');
   ws = new WebSocket(pid ? `${WS_URL}/?pid=${pid}` : WS_URL);
 
   ws.onopen = () => {

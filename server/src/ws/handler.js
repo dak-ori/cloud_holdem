@@ -77,7 +77,7 @@ async function handlePlayerLeave(gameId, playerId) {
   if (handle) {
     clearInterval(handle);
     countdowns.delete(gameId);
-    broadcastToGame(gameId, { type: 'countdown_cancelled', message: '플레이어가 떠났습니다' });
+    await publish(gameId, { type: 'countdown_cancelled', message: '플레이어가 떠났습니다' });
   }
   const room = await getRoom(gameId);
   if (room) {
@@ -89,7 +89,7 @@ async function handlePlayerLeave(gameId, playerId) {
       subscribedGames.delete(gameId);
     } else {
       await updateRoom(gameId, room);
-      broadcastToGame(gameId, { type: 'player_left', room });
+      await publish(gameId, { type: 'player_left', room });
     }
   }
   unregister(gameId, playerId);
@@ -121,7 +121,7 @@ async function route(msg, ws, playerId, currentGameId, setGameId) {
         await subscribe(msg.game_id, (event) => broadcastToGame(msg.game_id, event));
         subscribedGames.add(msg.game_id);
       }
-      broadcastToGame(msg.game_id, { type: 'player_joined', room });
+      await publish(msg.game_id, { type: 'player_joined', room });
 
       if (room.players.length === 4) {
         startCountdown(msg.game_id, room.players);
@@ -192,12 +192,12 @@ export async function startNextHand(gameId, state) {
 }
 
 function startCountdown(gameId, players) {
-  broadcastToGame(gameId, { type: 'countdown', seconds: 5, message: '게임이 시작합니다' });
+  publish(gameId, { type: 'countdown', seconds: 5, message: '게임이 시작합니다' }).catch(() => {});
   let count = 5;
   const handle = setInterval(async () => {
     count--;
     if (count > 0) {
-      broadcastToGame(gameId, { type: 'countdown', seconds: count });
+      publish(gameId, { type: 'countdown', seconds: count }).catch(() => {});
     } else {
       clearInterval(handle);
       countdowns.delete(gameId);

@@ -16,6 +16,7 @@ if #room['players'] >= 4 then return redis.error_reply('ROOM_FULL') end
 
 for _, p in ipairs(room['players']) do
   if p['nickname'] == nickname then return redis.error_reply('NICKNAME_TAKEN') end
+  if p['player_id'] == player_id then return redis.error_reply('ALREADY_IN_ROOM') end
 end
 
 table.insert(room['players'], { player_id = player_id, nickname = nickname })
@@ -51,6 +52,7 @@ export async function joinRoom(gameId, playerId, nickname) {
     if (err.message.includes('ROOM_NOT_FOUND')) throw new Error('room not found');
     if (err.message.includes('ROOM_FULL')) throw new Error('room full');
     if (err.message.includes('NICKNAME_TAKEN')) throw new Error('nickname taken');
+    if (err.message.includes('ALREADY_IN_ROOM')) throw new Error('already in room');
     throw err;
   }
 }

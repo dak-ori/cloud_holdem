@@ -16,17 +16,18 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
   fs.mkdirSync(SHOTS, { recursive: true });
   const browser = await chromium.launch({ executablePath: CHROME, headless: true });
 
-  // 4명 입장: 각자 독립된 브라우저 컨텍스트 (세션/localStorage 분리)
+  // 4명 입장: 같은 브라우저 컨텍스트의 탭 4개 — 실제 사용자가 탭을 여러 개
+  // 여는 상황과 동일 (sessionStorage가 탭별로 분리되는지 함께 검증됨)
+  const ctx = await browser.newContext({ viewport: { width: 900, height: 900 } });
   const pages = [];
   for (const nick of NICKS) {
-    const ctx = await browser.newContext({ viewport: { width: 900, height: 900 } });
     const page = await ctx.newPage();
     page.on('pageerror', e => log(`[${nick}] PAGE ERROR:`, e.message));
     await page.goto(URL);
     await page.fill('input[placeholder*="닉네임"]', nick);
     pages.push(page);
   }
-  log('4개 탭 접속 + 닉네임 입력 완료:', URL);
+  log('같은 브라우저 탭 4개 접속 + 닉네임 입력 완료:', URL);
 
   await pages[0].click('button:has-text("방 만들기")');
   for (let i = 1; i < 4; i++) {

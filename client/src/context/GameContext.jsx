@@ -57,7 +57,7 @@ export function GameProvider({ children }) {
 
     const unsubs = [
       on('connected', (msg) => {
-        localStorage.setItem('holdem_player_id', msg.player_id);
+        sessionStorage.setItem('holdem_player_id', msg.player_id);
         dispatch({ type: 'SET_PLAYER_ID', playerId: msg.player_id });
       }),
       on('rejoined', (msg) => dispatch({ type: 'REJOINED', room: msg.room, state: msg.state })),
