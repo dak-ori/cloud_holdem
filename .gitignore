@@ -3,3 +3,4 @@ kjh_credentials.csv
 *_credentials.csv
 *accessKeys.csv*
 client/e2e/shots/
+node_modules/

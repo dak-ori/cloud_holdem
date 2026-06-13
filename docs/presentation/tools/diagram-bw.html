@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1400px; height: 800px;
+    background: #ffffff;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: #111827;
+    padding: 30px 40px;
+    position: relative;
+  }
+  h1 { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
+  h1 span { color: #6b7280; font-weight: 400; }
+  .zone {
+    position: absolute; border-radius: 14px; border: 1.5px dashed #9ca3af;
+    padding-top: 10px; text-align: center;
+  }
+  .zone-label { font-size: 12.5px; font-weight: 700; letter-spacing: 2px; color: #6b7280; }
+  .box {
+    position: absolute; border-radius: 10px; padding: 12px 10px;
+    text-align: center; border: 1.5px solid #111827;
+    background: #fff;
+    box-shadow: 3px 3px 0 #e5e7eb;
+  }
+  .box .icon { font-size: 24px; display: block; margin-bottom: 4px; filter: grayscale(1); }
+  .box .name { font-size: 15px; font-weight: 700; display: block; }
+  .box .desc { font-size: 11.5px; color: #6b7280; display: block; margin-top: 3px; line-height: 1.45; }
+  .num {
+    position: absolute; width: 26px; height: 26px; border-radius: 50%;
+    background: #111827; color: #fff; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; z-index: 5;
+  }
+  .arrow { position: absolute; height: 2px; background: #111827; }
+  .arrow::after {
+    content: ''; position: absolute; right: -1px; top: -4.5px;
+    border-left: 10px solid #111827; border-top: 5.5px solid transparent; border-bottom: 5.5px solid transparent;
+  }
+  .arrow.gray { background: #9ca3af; }
+  .arrow.gray::after { border-left-color: #9ca3af; }
+  .alabel { position: absolute; font-size: 11.5px; color: #374151; background: #fff; padding: 1px 6px; white-space: nowrap; }
+  .foot { position: absolute; left: 40px; bottom: 26px; font-size: 13px; color: #374151; }
+</style>
+</head>
+<body>
+  <h1>CLOUD HOLD'EM — AWS 아키텍처 <span>(ap-northeast-2 · Default VPC · 3개 가용영역)</span></h1>
+
+  <!-- 유저 -->
+  <div class="box" style="left:40px; top:330px; width:130px;">
+    <span class="icon">👥</span><span class="name">플레이어</span>
+    <span class="desc">브라우저 ×4</span>
+  </div>
+
+  <!-- S3 정적 -->
+  <div class="box" style="left:270px; top:130px; width:200px;">
+    <span class="icon">🪣</span><span class="name">S3 버킷 A</span>
+    <span class="desc">React 정적 웹 호스팅<br>holdem-client</span>
+  </div>
+  <div class="num" style="left:250px; top:120px;">1</div>
+
+  <!-- ALB -->
+  <div class="box" style="left:270px; top:430px; width:200px;">
+    <span class="icon">⚖️</span><span class="name">ALB</span>
+    <span class="desc">WebSocket 라우팅<br>idle timeout 3600초<br>헬스체크 /health</span>
+  </div>
+  <div class="num" style="left:250px; top:420px;">2</div>
+
+  <!-- ECS zone -->
+  <div class="zone" style="left:570px; top:300px; width:430px; height:340px;">
+    <span class="zone-label">ECS 클러스터 (EC2) — Auto Scaling Group</span>
+  </div>
+  <div class="box" style="left:600px; top:360px; width:170px;">
+    <span class="icon">📦</span><span class="name">태스크 1</span>
+    <span class="desc">Node.js 게임 서버<br>awsvpc · :3001</span>
+  </div>
+  <div class="box" style="left:800px; top:360px; width:170px;">
+    <span class="icon">📦</span><span class="name">태스크 2</span>
+    <span class="desc">Node.js 게임 서버<br>awsvpc · :3001</span>
+  </div>
+  <div class="box" style="left:600px; top:516px; width:370px; background:#f9fafb;">
+    <span class="name" style="font-size:13px;">Capacity Provider</span>
+    <span class="desc">EC2 t3.small 2~4대 자동 증감 · 태스크 CPU 70% 타깃</span>
+  </div>
+  <div class="num" style="left:550px; top:290px;">3</div>
+
+  <!-- Redis -->
+  <div class="box" style="left:1100px; top:355px; width:210px;">
+    <span class="icon">⚡</span><span class="name">ElastiCache Redis</span>
+    <span class="desc">게임 상태 단일 저장소<br>Pub/Sub 이벤트 전파<br>(서버는 Stateless)</span>
+  </div>
+  <div class="num" style="left:1080px; top:345px;">4</div>
+
+  <!-- ECR -->
+  <div class="box" style="left:600px; top:130px; width:170px;">
+    <span class="icon">🐳</span><span class="name">ECR</span>
+    <span class="desc">컨테이너 이미지<br>holdem-server</span>
+  </div>
+  <div class="num" style="left:580px; top:120px;">6</div>
+
+  <!-- CloudWatch -->
+  <div class="box" style="left:830px; top:130px; width:170px;">
+    <span class="icon">📈</span><span class="name">CloudWatch</span>
+    <span class="desc">로그 + CPU 지표<br>알람 2종</span>
+  </div>
+
+  <!-- S3 히스토리 -->
+  <div class="box" style="left:1100px; top:560px; width:210px;">
+    <span class="icon">🪣</span><span class="name">S3 버킷 B</span>
+    <span class="desc">게임 히스토리 저장<br>holdem-history</span>
+  </div>
+  <div class="num" style="left:1080px; top:550px;">5</div>
+
+  <!-- 화살표 -->
+  <div class="arrow" style="left:175px; top:365px; width:90px; transform:rotate(-61deg); transform-origin:left center;"></div>
+  <div class="alabel" style="left:160px; top:250px;">정적 파일 로드</div>
+
+  <div class="arrow" style="left:175px; top:470px; width:90px;"></div>
+  <div class="alabel" style="left:175px; top:445px;">ws:// 연결</div>
+
+  <div class="arrow" style="left:475px; top:470px; width:120px; transform:rotate(-20deg); transform-origin:left center;"></div>
+  <div class="alabel" style="left:487px; top:415px;">분산 라우팅</div>
+
+  <div class="arrow" style="left:975px; top:415px; width:120px;"></div>
+  <div class="alabel" style="left:982px; top:390px;">상태 읽기/쓰기</div>
+
+  <div class="arrow gray" style="left:688px; top:225px; width:70px; transform:rotate(90deg); transform-origin:left center;"></div>
+  <div class="alabel" style="left:706px; top:252px;">이미지 pull</div>
+
+  <div class="arrow gray" style="left:918px; top:295px; width:60px; transform:rotate(-90deg); transform-origin:left center;"></div>
+  <div class="alabel" style="left:930px; top:262px;">로그·지표</div>
+
+  <div class="arrow gray" style="left:975px; top:560px; width:120px; transform:rotate(13deg); transform-origin:left center;"></div>
+  <div class="alabel" style="left:985px; top:585px;">종료 기록 저장</div>
+
+  <div class="foot">
+    🔒 보안 그룹 체인: <b>ALB-SG</b>(80 ← 인터넷) → <b>EC2-SG</b>(3001 ← ALB만) → <b>Redis-SG</b>(6379 ← EC2만) — Redis는 인터넷에서 도달 불가
+  </div>
+</body>
+</html>
