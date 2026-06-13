@@ -162,10 +162,13 @@ function handleRoundEnd(state) {
   return advancePhase(state);
 }
 
-async function startNextHand(gameId, state) {
+// 턴 타이머(다른 모듈)도 쇼다운 후 이 함수로 다음 핸드를 이어간다
+export async function startNextHand(gameId, state) {
+  // consecutive_auto_folds는 유지 — "3회 연속 방치 → 탈락"이 핸드를 넘어 누적되어야
+  // 전원이 방치한 게임도 타이머만으로 종료된다 (수동 액션 시 0으로 리셋됨)
   const surviving = state.players
-    .filter(p => p.chips > 0)
-    .map(p => ({ ...p, status: 'active', hand: [], consecutive_auto_folds: 0 }));
+    .filter(p => p.chips > 0 && p.status !== 'eliminated')
+    .map(p => ({ ...p, status: 'active', hand: [] }));
 
   if (surviving.length < 2) {
     await publish(gameId, { type: 'game_over', winner: surviving[0] });

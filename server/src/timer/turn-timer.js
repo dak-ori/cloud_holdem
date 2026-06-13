@@ -81,6 +81,14 @@ async function checkTurnDeadline(gameId) {
   }
 
   await publish(gameId, { type: 'state_update', state: newState });
+
+  // 쇼다운에서 멈추지 않도록 다음 핸드로 진행 — 전원이 방치한 게임도
+  // 타이머만으로 끝까지(탈락 → game_over → 정리) 굴러간다.
+  // 동적 import: handler가 이 모듈을 정적 import하므로 순환 참조 회피
+  if (newState.phase === 'showdown') {
+    const { startNextHand } = await import('../ws/handler.js');
+    await startNextHand(gameId, newState);
+  }
 }
 
 function handleRoundEnd(state) {
